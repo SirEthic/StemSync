@@ -20,7 +20,7 @@ import 'package:flutter/foundation.dart';
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
   final inputStream = InputFileStream(args['zipPath']!);
-  final archive = ZipDecoder().decodeBuffer(inputStream);
+  final archive = ZipDecoder().decodeStream(inputStream);
   
   for (final archiveFile in archive) {
     if (archiveFile.isFile) {
@@ -764,7 +764,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _sections.clear();
       _songKey = "Unknown";
       _pitchShiftSemitones = 0.0;
-      SoLoud.instance.filters.pitchShiftFilter.semitones.value = 0.0;
       _lyrics.clear();
       _activeLyricNotifier.value = -1;
 
@@ -839,10 +838,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         final filename = audioFile.path.split(Platform.pathSeparator).last;
         final source = await SoLoud.instance.loadFile(audioFile.path);
         
+        bool isMetronome = filename.toLowerCase().contains('metronome');
+        
+        // Activate pitch shift filter ONLY on musical stems, NEVER on the metronome
+        if (!isMetronome) {
+          try {
+            source.filters.pitchShiftFilter.activate();
+          } catch (e) {
+            debugPrint("Failed to activate pitch filter on $filename: $e");
+          }
+        }
+        
         final handle = SoLoud.instance.play(source, paused: true, looping: true);
         SoLoud.instance.setProtectVoice(handle, true);
         
-        if (filename.toLowerCase().contains('metronome')) {
+        if (isMetronome) {
            double sub = 1.0;
            if (filename.contains('0_5x')) sub = 0.5;
            if (filename.contains('2x')) sub = 2.0;
@@ -859,15 +869,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _songLength = SoLoud.instance.getLength(source).inMilliseconds / 1000.0;
         if (_songLength <= 0.0) _songLength = 1.0;
       }
-      
-      try {
-        if (SoLoud.instance.filters.pitchShiftFilter.index == -1) {
-          SoLoud.instance.filters.pitchShiftFilter.activate();
-        }
-      } catch (e) {
-        debugPrint("Filter activate note: $e");
-      }
-      SoLoud.instance.filters.pitchShiftFilter.shift.value = 1.0;
 
       setState(() { _isLoading = false; });
 
@@ -915,7 +916,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     // Total shift must counteract the tempo speed-up AND apply the user's requested key transposition
     double tempoShift = 1.0 / _playbackSpeed;
     double keyShift = pow(2.0, _pitchShiftSemitones / 12.0).toDouble();
-    SoLoud.instance.filters.pitchShiftFilter.shift.value = tempoShift * keyShift;
+    
+    for (var t in _tracks) {
+      try {
+        t.source.filters.pitchShiftFilter.shift(soundHandle: t.handle).value = tempoShift * keyShift;
+      } catch (e) {
+        debugPrint("Error setting pitch shift on track: $e");
+      }
+    }
   }
 
   void _showMetronomeMenu() {

@@ -214,46 +214,113 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         best_chord = chord_names[chord_idx] if chord_idx >= 0 else "N/C"
         chords_output.append({"time": float(beat_times[j]) + 0.045, "chord": best_chord})
 
-    # ==== STRUCTURAL SEGMENTATION ====
-    print("Detecting song sections...")
+    # ==== STRUCTURAL SEGMENTATION (allin1 deep learning model) ====
+    print("Detecting song sections (neural network)...")
+    sections_output = []
     try:
-        mfcc = librosa.feature.mfcc(y=y_harm, sr=sr_harm, n_mfcc=13)
-        if len(beat_frames_harm) > 10:
-            total_frames = mfcc.shape[1]
-            valid_beats = [f for f in beat_frames_harm if f > 0 and f < total_frames]
-            full_frames = sorted(list(set([0] + valid_beats + [total_frames])))
+        import allin1
+        import soundfile as sf
+        import tempfile, os
+        
+        # Write the summed full-mix array to a temp WAV so allin1 can read it.
+        # We never ship this file — it is deleted immediately after analysis.
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+        sf.write(tmp_path, y, sr)
+        
+        print("Running allin1 structural analysis (first run downloads ~200MB model)...")
+        result = allin1.analyze(tmp_path)
+        
+        # Clean up immediately
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+        
+        # result.segments is a list of objects with .label, .start, .end
+        # Labels from the model: 'intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', etc.
+        label_counts = {}
+        for seg in result.segments:
+            raw_label = seg.label.strip().lower()
             
-            mfcc_sync = librosa.util.sync(mfcc, full_frames, pad=False)
-            n_sections = min(10, max(4, mfcc_sync.shape[1] // 16))
-            bounds = librosa.segment.agglomerative(mfcc_sync, n_sections)
+            # Capitalize nicely: 'pre-chorus' → 'Pre-Chorus'
+            display = '-'.join(word.capitalize() for word in raw_label.split('-'))
             
-            bound_times = [float(librosa.frames_to_time(full_frames[b], sr=sr_harm)) for b in bounds]
-            bound_times.append(float(librosa.get_duration(y=y_harm, sr=sr_harm)))
+            # Number duplicate labels: Verse, Verse 2, Verse 3...
+            if raw_label in ('intro', 'outro'):
+                label = display  # Never number these
+            else:
+                label_counts[display] = label_counts.get(display, 0) + 1
+                n = label_counts[display]
+                label = display if n == 1 else f"{display} {n}"
             
-            # Merge tiny fragments (< 15 seconds) into adjacent sections to prevent 4-second choruses
-            merged_bounds = [bound_times[0]]
-            for i in range(1, len(bound_times) - 1):
-                if bound_times[i] - merged_bounds[-1] >= 15.0:
-                    merged_bounds.append(bound_times[i])
-            merged_bounds.append(bound_times[-1])
-            
-            section_names = ["Intro", "Verse 1", "Chorus 1", "Verse 2", "Chorus 2", "Bridge", "Chorus 3", "Outro"]
-            sections_output = []
-            for i in range(len(merged_bounds) - 1):
-                name = section_names[i] if i < len(section_names) else f"Section {i+1}"
-                if i == len(merged_bounds) - 2 and i > 0:
-                    name = "Outro" # Force absolute last valid section to be Outro
-                
-                sections_output.append({
-                    "name": name,
-                    "start_time": merged_bounds[i] + 0.045,
-                    "end_time": merged_bounds[i+1] + 0.045
-                })
-        else:
-            sections_output = []
+            sections_output.append({
+                "name": label,
+                "start_time": float(seg.start) + 0.045,
+                "end_time":   float(seg.end)   + 0.045,
+            })
+        
+        print(f"allin1 detected {len(sections_output)} sections.")
+        
     except Exception as e:
-        print(f"Warning: Section detection failed: {e}")
-        sections_output = []
+        print(f"allin1 section detection failed ({e}). Falling back to spectral heuristic...")
+        try:
+            # Fallback: MFCC + Spectral Contrast clustering + RMS loudness labelling
+            mfcc_full     = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+            contrast_full = librosa.feature.spectral_contrast(y=y, sr=sr)
+            
+            def norm_feat(f):
+                std = f.std(axis=1, keepdims=True)
+                std[std == 0] = 1
+                return (f - f.mean(axis=1, keepdims=True)) / std
+            
+            combined = np.vstack([norm_feat(mfcc_full), norm_feat(contrast_full)])
+            beat_frames_full = librosa.time_to_frames(beat_times, sr=sr)
+            
+            if len(beat_frames_full) > 10:
+                total_frames = combined.shape[1]
+                valid_beats  = [f for f in beat_frames_full if 0 < f < total_frames]
+                full_frames  = sorted(list(set([0] + valid_beats + [total_frames])))
+                feat_sync    = librosa.util.sync(combined, full_frames, pad=False)
+                n_sections   = min(10, max(4, feat_sync.shape[1] // 14))
+                bounds       = librosa.segment.agglomerative(feat_sync, n_sections)
+                
+                bound_times = [float(librosa.frames_to_time(full_frames[b], sr=sr)) for b in bounds]
+                bound_times.append(float(librosa.get_duration(y=y, sr=sr)))
+                
+                merged_bounds = [bound_times[0]]
+                for i in range(1, len(bound_times) - 1):
+                    if bound_times[i] - merged_bounds[-1] >= 12.0:
+                        merged_bounds.append(bound_times[i])
+                merged_bounds.append(bound_times[-1])
+                
+                seg_rms = []
+                for i in range(len(merged_bounds) - 1):
+                    chunk = y[int(merged_bounds[i]*sr):int(merged_bounds[i+1]*sr)]
+                    seg_rms.append(float(np.sqrt(np.mean(chunk**2))) if len(chunk) > 0 else 0.0)
+                
+                n_segs = len(seg_rms)
+                chorus_idxs = set(idx for idx, _ in sorted(enumerate(seg_rms), key=lambda x: x[1], reverse=True)[:max(1, round(n_segs*0.40))])
+                chorus_count = verse_count = 0
+                
+                for i in range(n_segs):
+                    start_t, end_t = merged_bounds[i], merged_bounds[i+1]
+                    if i == 0 and (end_t - start_t) <= 20.0 and i not in chorus_idxs:
+                        label = "Intro"
+                    elif i == n_segs - 1:
+                        label = "Outro"
+                    elif i in chorus_idxs:
+                        chorus_count += 1
+                        label = "Chorus" if chorus_count == 1 else f"Chorus {chorus_count}"
+                    elif i > n_segs // 2 and verse_count >= 2 and chorus_count >= 1:
+                        label = "Bridge"
+                    else:
+                        verse_count += 1
+                        label = "Verse" if verse_count == 1 else f"Verse {verse_count}"
+                    sections_output.append({"name": label, "start_time": start_t + 0.045, "end_time": end_t + 0.045})
+        except Exception as e2:
+            print(f"Warning: Fallback section detection also failed: {e2}")
+            sections_output = []
 
     duration = librosa.get_duration(y=y, sr=sr)
     interval = 60.0 / bpm if bpm > 0 else 0.5
@@ -284,79 +351,90 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     import soundfile as sf
     import numpy as np
     
-    duration = librosa.get_duration(y=y, sr=sr)
+    # We generate the metronome at 44100Hz so it perfectly matches the standard MP3 stems.
+    # Generating at 22050Hz against 44100Hz stems causes fractional sample misalignment and jitter.
+    metro_sr = 44100
+    metro_duration = librosa.get_duration(y=y, sr=sr)
+    
+    # Create a punchy, professional transient "woodblock" click instead of a soft sine wave
+    def make_click_array(freq):
+        # 50ms click
+        t = np.linspace(0, 0.05, int(metro_sr * 0.05), endpoint=False)
+        # Pitch drop from freq to freq/2 creates a sharp "thwack" transient
+        f = np.linspace(freq, freq / 2, len(t))
+        wave = np.sin(2 * np.pi * f * t)
+        # Exponential decay envelope so it cuts off cleanly
+        env = np.exp(-75 * t)
+        return wave * env
+        
+    click_1x = make_click_array(1500.0)
+    click_05x = make_click_array(1000.0)
+    click_2x = make_click_array(2000.0)
+    
     if len(beat_times) > 0:
         # beat_times is the array of actual human beats detected by librosa
         dynamic_beats = list(beat_times)
         
-        # 1. Project backwards to 0.0 using the first available beat interval
-        if len(dynamic_beats) >= 2 and (dynamic_beats[1] - dynamic_beats[0]) > 0.1:
-            avg_intro_interval = dynamic_beats[1] - dynamic_beats[0]
-        else:
-            avg_intro_interval = 60.0 / (bpm if bpm > 0 else 120.0)
+        # 1. Project backwards to 0.0 using the robust MEDIAN interval, not just the first two beats
+        intervals = np.diff(dynamic_beats)
+        valid_intervals = intervals[intervals > 0.1]
+        median_interval = np.median(valid_intervals) if len(valid_intervals) > 0 else (60.0 / (bpm if bpm > 0 else 120.0))
             
         first_beat = dynamic_beats[0]
-        while first_beat >= avg_intro_interval:
-            first_beat -= avg_intro_interval
+        while first_beat >= median_interval:
+            first_beat -= median_interval
             dynamic_beats.insert(0, first_beat)
             
-        # 2. Project forwards to the end of the song if librosa stopped detecting early
-        if len(dynamic_beats) >= 2 and (dynamic_beats[-1] - dynamic_beats[-2]) > 0.1:
-            avg_outro_interval = dynamic_beats[-1] - dynamic_beats[-2]
-        else:
-            avg_outro_interval = 60.0 / (bpm if bpm > 0 else 120.0)
-            
+        # 2. Project forwards to the end of the song
         last_beat = dynamic_beats[-1]
-        while last_beat + avg_outro_interval <= duration:
-            last_beat += avg_outro_interval
+        while last_beat + median_interval <= metro_duration:
+            last_beat += median_interval
             dynamic_beats.append(last_beat)
             
         dynamic_beats = np.array(dynamic_beats)
         
-        # Add 45ms shift for MP3 encoder padding when played alongside MP3 stems in SoLoud
-        dynamic_beats += 0.045
+        # Add a precisely measured 26ms shift for Gapless MP3 encoder padding.
+        # Previously we guessed 45ms, but standard LAME/FFmpeg padding is 1152 samples at 44100Hz = 26.12ms.
+        dynamic_beats += 0.026
         
-        # VERY IMPORTANT: Older versions of librosa crash if any click time exceeds the audio length!
-        dynamic_beats = dynamic_beats[dynamic_beats < duration]
+        dynamic_beats = dynamic_beats[dynamic_beats < metro_duration]
         
         if len(dynamic_beats) > 0:
-            # 1x Subdivision (Dynamic)
-            click_track_1x = librosa.clicks(times=dynamic_beats, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
+            # 1x Subdivision
+            click_track_1x = librosa.clicks(times=dynamic_beats, sr=metro_sr, click=click_1x, length=int(metro_duration * metro_sr))
             path_1x = stem_folder / "0_Metronome_1x.flac"
-            sf.write(str(path_1x), click_track_1x, sr, format='FLAC')
+            sf.write(str(path_1x), click_track_1x, metro_sr, format='FLAC')
             audio_files.append(path_1x)
             
-            # 0.5x Subdivision (Dynamic Half Time - Safely skip ghost transients to prevent de-sync)
+            # 0.5x Subdivision
             beats_05x = []
             if len(dynamic_beats) > 0:
                 beats_05x.append(dynamic_beats[0])
-                avg_interval = 60.0 / (bpm if bpm > 0 else 120.0)
                 last_clicked = dynamic_beats[0]
-                
                 for b in dynamic_beats[1:]:
-                    if (b - last_clicked) >= (avg_interval * 1.5):
+                    if (b - last_clicked) >= (median_interval * 1.5):
                         beats_05x.append(b)
                         last_clicked = b
             
             beats_05x = np.array(beats_05x)
-            click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
+            click_track_05x = librosa.clicks(times=beats_05x, sr=metro_sr, click=click_05x, length=int(metro_duration * metro_sr))
             path_05x = stem_folder / "0_Metronome_0_5x.flac"
-            sf.write(str(path_05x), click_track_05x, sr, format='FLAC')
+            sf.write(str(path_05x), click_track_05x, metro_sr, format='FLAC')
             audio_files.append(path_05x)
             
-            # 2x Subdivision (Dynamic Double Time - Interpolate exactly halfway between each dynamic beat)
+            # 2x Subdivision
             beats_2x = []
             for i in range(len(dynamic_beats) - 1):
                 beats_2x.append(dynamic_beats[i])
                 halfway = (dynamic_beats[i] + dynamic_beats[i+1]) / 2.0
-                if halfway < duration:
+                if halfway < metro_duration:
                     beats_2x.append(halfway)
             beats_2x.append(dynamic_beats[-1])
             beats_2x = np.array(beats_2x)
             
-            click_track_2x = librosa.clicks(times=beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
+            click_track_2x = librosa.clicks(times=beats_2x, sr=metro_sr, click=click_2x, length=int(metro_duration * metro_sr))
             path_2x = stem_folder / "0_Metronome_2x.flac"
-            sf.write(str(path_2x), click_track_2x, sr, format='FLAC')
+            sf.write(str(path_2x), click_track_2x, metro_sr, format='FLAC')
             audio_files.append(path_2x)
     
     # Zip it all up
