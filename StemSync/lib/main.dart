@@ -252,23 +252,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     int index = 0;
     
     double pitchRatio = pow(2.0, _pitchShiftSemitones / 12.0).toDouble();
-    String pitchFilter = "";
-    if (_pitchShiftSemitones != 0.0) {
-       int newRate = (44100 * pitchRatio).toInt();
-       pitchFilter = "asetrate=$newRate,atempo=${1/pitchRatio},";
-    }
-
+  
     for (var track in activeTracks) {
       inputs += "-i \"${track.file.path}\" "; 
       
       double amp = track.volume;
-      if (!track.name.toLowerCase().contains("metronome")) {
+      bool isMetronome = track.name.toLowerCase().contains("metronome");
+      
+      if (!isMetronome) {
          amp = _getAmplitudeFromSlider(track.volume);
       } else {
          amp = _getAmplitudeFromSlider(_metronomeVolume);
       }
       
-      filter += "[$index:a]${pitchFilter}volume=$amp[a$index]; ";
+      String trackFilter = "";
+      
+      // Helper to chain atempo filters if the ratio exceeds FFmpeg's 0.5 - 2.0 limit
+      String buildAtempo(double ratio) {
+        if (ratio == 1.0) return "";
+        if (ratio >= 0.5 && ratio <= 2.0) return "atempo=$ratio,";
+        if (ratio < 0.5) return "atempo=0.5,atempo=${ratio/0.5},";
+        return "atempo=2.0,atempo=${ratio/2.0},";
+      }
+      
+      if (isMetronome) {
+        // Metronome: Only tempo shift, never pitch shift (prevents squeaking)
+        trackFilter = buildAtempo(_playbackSpeed);
+      } else {
+        // Musical tracks: Compound Pitch shift AND tempo shift
+        if (_pitchShiftSemitones != 0.0 || _playbackSpeed != 1.0) {
+           int newRate = (44100 * pitchRatio).toInt();
+           double atempoRatio = _playbackSpeed / pitchRatio;
+           trackFilter = "asetrate=$newRate,${buildAtempo(atempoRatio)}";
+        }
+      }
+      
+      filter += "[$index:a]${trackFilter}volume=$amp[a$index]; ";
       index++;
     }
 
@@ -687,9 +706,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
       if (result != null && result.isNotEmpty) {
         final zipPath = result.single.path!;
+        final zipName = result.single.name.replaceAll('.zip', '').replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
         
         final docDir = await getApplicationDocumentsDirectory();
-        final targetDir = Directory('${docDir.path}/songs/song_${DateTime.now().millisecondsSinceEpoch}');
+        final targetDir = Directory('${docDir.path}/songs/$zipName');
+        
+        if (targetDir.existsSync()) {
+          targetDir.deleteSync(recursive: true);
+        }
         targetDir.createSync(recursive: true);
 
         await compute(_extractZipInIsolate, {
