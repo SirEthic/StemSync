@@ -736,6 +736,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     return const FaIcon(FontAwesomeIcons.music, color: Colors.white, size: 22);
   }
 
+  String _getDisplayNameForTrack(String filename) {
+    final lower = filename.toLowerCase();
+    if (lower.contains('vocal')) return "Vocals";
+    if (lower.contains('drum')) return "Drums";
+    if (lower.contains('bass')) return "Bass";
+    if (lower.contains('guitar')) return "Guitar";
+    if (lower.contains('piano')) return "Piano";
+    if (lower.contains('other')) return "Other";
+    
+    // Fallback: capitalize whatever it is
+    String clean = filename.split('.').first.replaceAll('_', ' ').replaceAll(RegExp(r'[0-9]'), '').trim();
+    if (clean.isEmpty) return "Track";
+    return '${clean[0].toUpperCase()}${clean.substring(1)}';
+  }
+
   Future<void> _loadZipFile() async {
     try {
       setState(() { _isLibraryLoading = true; });
@@ -1024,13 +1039,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Builder(
-                    builder: (context) {
-                      String tName = track.name.split('.').first;
-                      String dName = tName.isEmpty ? '' : '${tName[0].toUpperCase()}${tName.substring(1)}';
-                      return Text(dName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
-                    }
-                  ),
+                  Text(_getDisplayNameForTrack(track.name), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
