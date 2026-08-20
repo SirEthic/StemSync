@@ -279,10 +279,10 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         dynamic_beats = list(beat_times)
         
         # 1. Project backwards to 0.0 using the first available beat interval
-        if len(dynamic_beats) >= 2:
+        if len(dynamic_beats) >= 2 and (dynamic_beats[1] - dynamic_beats[0]) > 0.1:
             avg_intro_interval = dynamic_beats[1] - dynamic_beats[0]
         else:
-            avg_intro_interval = 60.0 / bpm
+            avg_intro_interval = 60.0 / (bpm if bpm > 0 else 120.0)
             
         first_beat = dynamic_beats[0]
         while first_beat >= avg_intro_interval:
@@ -290,10 +290,10 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
             dynamic_beats.insert(0, first_beat)
             
         # 2. Project forwards to the end of the song if librosa stopped detecting early
-        if len(dynamic_beats) >= 2:
+        if len(dynamic_beats) >= 2 and (dynamic_beats[-1] - dynamic_beats[-2]) > 0.1:
             avg_outro_interval = dynamic_beats[-1] - dynamic_beats[-2]
         else:
-            avg_outro_interval = 60.0 / bpm
+            avg_outro_interval = 60.0 / (bpm if bpm > 0 else 120.0)
             
         last_beat = dynamic_beats[-1]
         while last_beat + avg_outro_interval <= duration:
