@@ -97,6 +97,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   List<TrackData> _tracks = [];
   Map<double, TrackData> _metronomeTracks = {};
   Map<String, dynamic>? _songMetadata;
+  Bus? _stemsBus;
 
   // Smart Metronome & Tempo State
   bool _isMetronomeOn = false;
@@ -757,6 +758,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         SoLoud.instance.stop(t.handle);
         SoLoud.instance.disposeSource(t.source);
       }
+      if (_stemsBus != null) {
+        try { _stemsBus!.dispose(); } catch (_) {}
+        _stemsBus = null;
+      }
       _metronomeTracks.clear();
       _tracks.clear();
       _songMetadata = null;
@@ -834,22 +839,24 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         return order(a.path).compareTo(order(b.path));
       });
 
+      _stemsBus = SoLoud.instance.createMixingBus(name: 'stems');
+      _stemsBus!.playOnEngine();
+      try {
+        _stemsBus!.filters.pitchShiftFilter.activate();
+      } catch (e) {
+        debugPrint("Failed to activate bus pitch filter: $e");
+      }
+
       for (var audioFile in audioFiles) {
         final filename = audioFile.path.split(Platform.pathSeparator).last;
         final source = await SoLoud.instance.loadFile(audioFile.path);
         
         bool isMetronome = filename.toLowerCase().contains('metronome');
         
-        // Activate pitch shift filter ONLY on musical stems, NEVER on the metronome
-        if (!isMetronome) {
-          try {
-            source.filters.pitchShiftFilter.activate();
-          } catch (e) {
-            debugPrint("Failed to activate pitch filter on $filename: $e");
-          }
-        }
-        
-        final handle = SoLoud.instance.play(source, paused: true, looping: true);
+        final handle = isMetronome
+            ? SoLoud.instance.play(source, paused: true, looping: true)
+            : _stemsBus!.play(source, paused: true, looping: true);
+            
         SoLoud.instance.setProtectVoice(handle, true);
         
         if (isMetronome) {
@@ -917,11 +924,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     double tempoShift = 1.0 / _playbackSpeed;
     double keyShift = pow(2.0, _pitchShiftSemitones / 12.0).toDouble();
     
-    for (var t in _tracks) {
+    if (_stemsBus != null) {
       try {
-        t.source.filters.pitchShiftFilter.shift(soundHandle: t.handle).value = tempoShift * keyShift;
+        _stemsBus!.filters.pitchShiftFilter.shift.value = tempoShift * keyShift;
       } catch (e) {
-        debugPrint("Error setting pitch shift on track: $e");
+        debugPrint("Error setting pitch shift on bus: $e");
       }
     }
   }
