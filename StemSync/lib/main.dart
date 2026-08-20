@@ -133,6 +133,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   
   final ScrollController _chordScrollController = ScrollController();
   final ScrollController _lyricScrollController = ScrollController();
+  final ScrollController _sectionScrollController = ScrollController();
 
   // Library State
   List<Directory> _savedSongs = [];
@@ -593,6 +594,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
     if (newIdx != _activeSectionNotifier.value) {
       _activeSectionNotifier.value = newIdx;
+      if (newIdx >= 0 && _sectionScrollController.hasClients) {
+        // Each pill is roughly 120px wide (padding + text + margin).
+        // Scroll so the active pill is roughly centred on screen.
+        const double pillWidth = 120.0;
+        final double target = (newIdx * pillWidth) - 80.0;
+        _sectionScrollController.animateTo(
+          target.clamp(0.0, _sectionScrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
@@ -1625,6 +1637,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               valueListenable: _activeSectionNotifier,
               builder: (context, activeSection, child) {
                 return SingleChildScrollView(
+                  controller: _sectionScrollController,
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24),
