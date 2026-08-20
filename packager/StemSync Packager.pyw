@@ -360,11 +360,10 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     def make_click_array(freq):
         # 50ms click
         t = np.linspace(0, 0.05, int(metro_sr * 0.05), endpoint=False)
-        # Pitch drop from freq to freq/2 creates a sharp "thwack" transient
-        f = np.linspace(freq, freq / 2, len(t))
-        wave = np.sin(2 * np.pi * f * t)
-        # Exponential decay envelope so it cuts off cleanly
-        env = np.exp(-75 * t)
+        # Fixed frequency sine wave
+        wave = np.sin(2 * np.pi * freq * t)
+        # Extremely sharp exponential decay envelope so it sounds percussive
+        env = np.exp(-150 * t)
         return wave * env
         
     click_1x = make_click_array(1500.0)
