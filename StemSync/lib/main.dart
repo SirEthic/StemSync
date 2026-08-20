@@ -1024,7 +1024,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text("Options: ${track.name.split('.').first}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Builder(
+                    builder: (context) {
+                      String tName = track.name.split('.').first;
+                      String dName = tName.isEmpty ? '' : '${tName[0].toUpperCase()}${tName.substring(1)}';
+                      return Text(dName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
+                    }
+                  ),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
