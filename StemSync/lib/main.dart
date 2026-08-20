@@ -926,7 +926,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
     if (_stemsBus != null) {
       try {
-        _stemsBus!.filters.pitchShiftFilter.shift.value = tempoShift * keyShift;
+        _stemsBus!.filters.pitchShiftFilter.shift().value = tempoShift * keyShift;
       } catch (e) {
         debugPrint("Error setting pitch shift on bus: $e");
       }
