@@ -305,7 +305,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 
                 for i in range(n_segs):
                     start_t, end_t = merged_bounds[i], merged_bounds[i+1]
-                    if i == 0 and (end_t - start_t) <= 20.0 and i not in chorus_idxs:
+                    if i == 0:
                         label = "Intro"
                     elif i == n_segs - 1:
                         label = "Outro"
