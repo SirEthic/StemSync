@@ -307,15 +307,15 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         
         # 1x Subdivision (Dynamic)
         click_track_1x = librosa.clicks(times=dynamic_beats, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
-        path_1x = stem_folder / "0_Metronome_1x.wav"
-        sf.write(str(path_1x), click_track_1x, sr)
+        path_1x = stem_folder / "0_Metronome_1x.ogg"
+        sf.write(str(path_1x), click_track_1x, sr, format='OGG')
         audio_files.append(path_1x)
         
         # 0.5x Subdivision (Dynamic Half Time - Take every other beat)
         beats_05x = dynamic_beats[::2]
         click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
-        path_05x = stem_folder / "0_Metronome_0_5x.wav"
-        sf.write(str(path_05x), click_track_05x, sr)
+        path_05x = stem_folder / "0_Metronome_0_5x.ogg"
+        sf.write(str(path_05x), click_track_05x, sr, format='OGG')
         audio_files.append(path_05x)
         
         # 2x Subdivision (Dynamic Double Time - Interpolate exactly halfway between each dynamic beat)
@@ -328,8 +328,8 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         beats_2x = np.array(beats_2x)
         
         click_track_2x = librosa.clicks(times=beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
-        path_2x = stem_folder / "0_Metronome_2x.wav"
-        sf.write(str(path_2x), click_track_2x, sr)
+        path_2x = stem_folder / "0_Metronome_2x.ogg"
+        sf.write(str(path_2x), click_track_2x, sr, format='OGG')
         audio_files.append(path_2x)
     
     # Zip it all up

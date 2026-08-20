@@ -15,21 +15,6 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
-
-Future<void> _extractZipInIsolate(Map<String, String> args) async {
-  final bytes = File(args['zipPath']!).readAsBytesSync();
-  final targetPath = args['targetPath']!;
-  final archive = ZipDecoder().decodeBytes(bytes);
-  for (final archiveFile in archive) {
-    if (archiveFile.isFile) {
-      final data = archiveFile.content as List<int>;
-      File('$targetPath/${archiveFile.name}')
-        ..createSync(recursive: true)
-        ..writeAsBytesSync(data);
-    }
-  }
-}
 
 class LyricLine {
   final double time;
@@ -513,7 +498,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   void _parseLrcContent(String content) {
     final lines = content.split('\n');
-    final RegExp timeRegExp = RegExp(r'\[(\d{2,}):(\d{2}\.\d{1,3})\]');
+    final RegExp timeRegExp = RegExp(r'\[(\d{2}):(\d{2}\.\d{2})\]');
     List<LyricLine> parsed = [];
     
     for (var line in lines) {
@@ -685,18 +670,23 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         allowedExtensions: ['zip'],
       );
 
-      if (result != null && result.isNotEmpty) {
-        final zipPath = result.single.path!;
+      if (result.isNotEmpty) {
+        final file = File(result.single.path!);
+        final bytes = file.readAsBytesSync();
         
         final docDir = await getApplicationDocumentsDirectory();
         final targetDir = Directory('${docDir.path}/songs/song_${DateTime.now().millisecondsSinceEpoch}');
         targetDir.createSync(recursive: true);
 
-        await compute(_extractZipInIsolate, {
-          'zipPath': zipPath,
-          'targetPath': targetDir.path,
-        });
-        
+        final archive = ZipDecoder().decodeBytes(bytes);
+        for (final archiveFile in archive) {
+          if (archiveFile.isFile) {
+            final data = archiveFile.content as List<int>;
+            File('${targetDir.path}/${archiveFile.name}')
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(data);
+          }
+        }
         await _loadLibrary();
       } else {
         setState(() { _isLibraryLoading = false; });
