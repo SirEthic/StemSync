@@ -818,7 +818,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       }
 
       final audioFiles = targetDir.listSync(recursive: true).whereType<File>().where((f) => 
-        f.path.endsWith('.wav') || f.path.endsWith('.mp3')
+        f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
       ).toList();
 
       audioFiles.sort((a, b) {

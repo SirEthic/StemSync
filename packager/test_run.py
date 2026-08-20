@@ -305,37 +305,32 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         # Add 45ms shift for MP3 encoder padding when played alongside MP3 stems in SoLoud
         dynamic_beats += 0.045
         
-        # VERY IMPORTANT: Older versions of librosa crash if any click time exceeds the audio length!
-        dynamic_beats = dynamic_beats[dynamic_beats < duration]
+        # 1x Subdivision (Dynamic)
+        click_track_1x = librosa.clicks(times=dynamic_beats, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
+        path_1x = stem_folder / "0_Metronome_1x.ogg"
+        sf.write(str(path_1x), click_track_1x, sr, format='OGG')
+        audio_files.append(path_1x)
         
-        if len(dynamic_beats) > 0:
-            # 1x Subdivision (Dynamic)
-            click_track_1x = librosa.clicks(times=dynamic_beats, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
-            path_1x = stem_folder / "0_Metronome_1x.flac"
-            sf.write(str(path_1x), click_track_1x, sr, format='FLAC')
-            audio_files.append(path_1x)
-            
-            # 0.5x Subdivision (Dynamic Half Time - Take every other beat)
-            beats_05x = dynamic_beats[::2]
-            click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
-            path_05x = stem_folder / "0_Metronome_0_5x.flac"
-            sf.write(str(path_05x), click_track_05x, sr, format='FLAC')
-            audio_files.append(path_05x)
-            
-            # 2x Subdivision (Dynamic Double Time - Interpolate exactly halfway between each dynamic beat)
-            beats_2x = []
-            for i in range(len(dynamic_beats) - 1):
-                beats_2x.append(dynamic_beats[i])
-                halfway = (dynamic_beats[i] + dynamic_beats[i+1]) / 2.0
-                if halfway < duration:
-                    beats_2x.append(halfway)
-            beats_2x.append(dynamic_beats[-1])
-            beats_2x = np.array(beats_2x)
-            
-            click_track_2x = librosa.clicks(times=beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
-            path_2x = stem_folder / "0_Metronome_2x.flac"
-            sf.write(str(path_2x), click_track_2x, sr, format='FLAC')
-            audio_files.append(path_2x)
+        # 0.5x Subdivision (Dynamic Half Time - Take every other beat)
+        beats_05x = dynamic_beats[::2]
+        click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
+        path_05x = stem_folder / "0_Metronome_0_5x.ogg"
+        sf.write(str(path_05x), click_track_05x, sr, format='OGG')
+        audio_files.append(path_05x)
+        
+        # 2x Subdivision (Dynamic Double Time - Interpolate exactly halfway between each dynamic beat)
+        beats_2x = []
+        for i in range(len(dynamic_beats) - 1):
+            beats_2x.append(dynamic_beats[i])
+            halfway = (dynamic_beats[i] + dynamic_beats[i+1]) / 2.0
+            beats_2x.append(halfway)
+        beats_2x.append(dynamic_beats[-1])
+        beats_2x = np.array(beats_2x)
+        
+        click_track_2x = librosa.clicks(times=beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
+        path_2x = stem_folder / "0_Metronome_2x.ogg"
+        sf.write(str(path_2x), click_track_2x, sr, format='OGG')
+        audio_files.append(path_2x)
     
     # Zip it all up
     print("Downloading lyrics...")
@@ -374,144 +369,11 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     if 'path_05x' in locals() and path_05x.exists(): path_05x.unlink()
     if 'path_2x' in locals() and path_2x.exists(): path_2x.unlink()
 
-if __name__ == "__main__":
-    import tkinter as tk
-    import customtkinter as ctk
-    from tkinter import filedialog, messagebox
-    import threading
-    import sys
 
-    # Set modern theme
-    ctk.set_appearance_mode("dark")
-    ctk.set_default_color_theme("green")
 
-    class PrintLogger:
-        def __init__(self, root_ref, textbox):
-            self.root_ref = root_ref
-            self.textbox = textbox
-
-        def write(self, text):
-            self.root_ref.after(0, lambda t=text: self._safe_write(t))
-            
-        def _safe_write(self, text):
-            self.textbox.insert(tk.END, text)
-            self.textbox.see(tk.END)
-            
-        def flush(self):
-            pass
-
-    def select_folder():
-        folder = filedialog.askdirectory(title="Select UVR5 Stems Folder")
-        if folder:
-            folder_var.set(folder)
-            if not song_var.get():
-                song_var.set(Path(folder).name)
-                
-    def select_out_dir():
-        out = filedialog.askdirectory(title="Select Output Directory for Zip")
-        if out:
-            out_var.set(out)
-
-    def start_packaging():
-        song = song_var.get().strip()
-        artist = artist_var.get().strip()
-        folder = folder_var.get().strip()
-        out = out_var.get().strip()
-        
-        if not song or not folder:
-            messagebox.showerror("Error", "Please provide both a Song Name and Stems Folder.")
-            return
-            
-        if not out:
-            out = folder
-            
-        btn_package.configure(state="disabled")
-        btn_folder.configure(state="disabled")
-        btn_out.configure(state="disabled")
-        
-        def run_task():
-            try:
-                print(f"=== Starting StemSync Packaging: {song} ===")
-                create_bandtrack_zip(song, folder, out, manual_artist=artist)
-            except Exception as e:
-                print(f"\n[ERROR]: {e}")
-                err_msg = str(e)
-                root.after(0, lambda msg=err_msg: messagebox.showerror("Error", msg))
-            finally:
-                root.after(0, lambda: btn_package.configure(state="normal"))
-                root.after(0, lambda: btn_folder.configure(state="normal"))
-                root.after(0, lambda: btn_out.configure(state="normal"))
-                
-        threading.Thread(target=run_task, daemon=True).start()
-
-    # === PROFESSIONAL ENTERPRISE UI REDESIGN ===
-    root = ctk.CTk()
-    root.title("StemSync Engine")
-    root.geometry("750x650")
-    
-    # Configure grid layout
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_rowconfigure(1, weight=1)
-    
-    # --- HEADER ---
-    header_frame = ctk.CTkFrame(root, height=70, corner_radius=0, fg_color="#1E1E1E")
-    header_frame.grid(row=0, column=0, sticky="ew")
-    header_frame.grid_columnconfigure(0, weight=1)
-    
-    logo_label = ctk.CTkLabel(header_frame, text="StemSync Packager", font=ctk.CTkFont(size=20, weight="normal"), text_color="#E0E0E0")
-    logo_label.grid(row=0, column=0, pady=15)
-    
-    # --- MAIN CONTENT ---
-    main_frame = ctk.CTkFrame(root, fg_color="transparent")
-    main_frame.grid(row=1, column=0, sticky="nsew", padx=40, pady=20)
-    main_frame.grid_columnconfigure(0, weight=1)
-    
-    # -- Card 1: Metadata --
-    card1 = ctk.CTkFrame(main_frame, corner_radius=6, fg_color="#252526", border_width=1, border_color="#3E3E42")
-    card1.grid(row=0, column=0, sticky="ew", pady=(0, 15))
-    card1.grid_columnconfigure(1, weight=1)
-    
-    ctk.CTkLabel(card1, text="Metadata", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=2, sticky="w", padx=25, pady=(15, 10))
-    
-    song_var = tk.StringVar()
-    artist_var = tk.StringVar()
-    
-    ctk.CTkLabel(card1, text="Track Title", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card1, textvariable=song_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
-    
-    ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 20))
-    
-    # -- Card 2: Directories --
-    card2 = ctk.CTkFrame(main_frame, corner_radius=6, fg_color="#252526", border_width=1, border_color="#3E3E42")
-    card2.grid(row=1, column=0, sticky="ew", pady=(0, 20))
-    card2.grid_columnconfigure(1, weight=1)
-    
-    ctk.CTkLabel(card2, text="Directories", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=3, sticky="w", padx=25, pady=(15, 10))
-    
-    folder_var = tk.StringVar()
-    out_var = tk.StringVar()
-    
-    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
-    btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_folder)
-    btn_folder.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
-    
-    ctk.CTkLabel(card2, text="Output", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
-    btn_out = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_out_dir)
-    btn_out.grid(row=2, column=2, padx=(0, 25), pady=(0, 20))
-    
-    # -- Action Area --
-    btn_package = ctk.CTkButton(main_frame, text="Start Packaging", command=start_packaging, font=ctk.CTkFont(size=14, weight="normal"), height=40, corner_radius=4, fg_color="#0E639C", text_color="#FFFFFF", hover_color="#1177BB")
-    btn_package.grid(row=2, column=0, sticky="ew", pady=(0, 20))
-    
-    # -- Console --
-    console = ctk.CTkTextbox(main_frame, height=140, font=ctk.CTkFont(family="Consolas", size=12), text_color="#CCCCCC", fg_color="#1E1E1E", border_width=1, border_color="#3E3E42", corner_radius=4)
-    console.grid(row=3, column=0, sticky="nsew")
-    main_frame.grid_rowconfigure(3, weight=1)
-    
-    sys.stdout = PrintLogger(root, console)
-    sys.stderr = PrintLogger(root, console)
-    
-    root.mainloop()
+import asyncio, traceback
+try:
+    create_bandtrack_zip("Ufaq", "E:/AI Instrument seperator/Ufaq_test", "E:/AI Instrument seperator", manual_artist="Anand Bhaskar")
+    print("SUCCESS")
+except Exception as e:
+    traceback.print_exc()
