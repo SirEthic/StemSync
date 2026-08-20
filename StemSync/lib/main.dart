@@ -46,13 +46,25 @@ void main() {
 }
 
 class TrackData {
-  final String name;
-  final SoundHandle handle;
-  final AudioSource source;
-  final File file;
+  String name;
+  SoundHandle handle;
+  AudioSource source;
+  File file;
   double volume;
+  bool isMuted;
+  bool isSoloed;
+  double pan;
 
-  TrackData({required this.name, required this.handle, required this.source, required this.file, this.volume = 1.0});
+  TrackData({
+    required this.name, 
+    required this.handle, 
+    required this.source, 
+    required this.file, 
+    required this.volume,
+    this.isMuted = false,
+    this.isSoloed = false,
+    this.pan = 0.0,
+  });
 }
 
 class StemSyncApp extends StatelessWidget {
@@ -111,6 +123,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   double _currentTempo = 120.0;
   double _firstBeat = 0.0;
   double _metronomeVolume = 0.7;
+  double _metronomePan = 0.0;
   double _playbackSpeed = 1.0;
   double _subdivision = 1.0;
   
@@ -608,6 +621,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
 
+  void _updateTrackVolumes() {
+    bool isAnySoloed = _tracks.any((t) => t.isSoloed);
+    for (var track in _tracks) {
+      double effectiveAmp = 0.0;
+      if (isAnySoloed) {
+        effectiveAmp = track.isSoloed ? _getAmplitudeFromSlider(track.volume) : 0.0;
+      } else {
+        effectiveAmp = track.isMuted ? 0.0 : _getAmplitudeFromSlider(track.volume);
+      }
+      SoLoud.instance.setVolume(track.handle, effectiveAmp);
+    }
+  }
+
   void _updateActiveChord(double pos) {
     if (_chords.isEmpty) return;
     int newIdx = -1;
@@ -819,6 +845,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       }
 
       Map<String, double> savedVolumes = {};
+      Map<String, double> savedPans = {};
+      Map<String, bool> savedMutes = {};
+      Map<String, bool> savedSolos = {};
       final mixStateFile = File('${targetDir.path}/mix_state.json');
       if (mixStateFile.existsSync()) {
         try {
@@ -826,12 +855,22 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           if (data['volumes'] != null) {
             savedVolumes = Map<String, double>.from(data['volumes']);
           }
+          if (data['pans'] != null) {
+            savedPans = Map<String, double>.from(data['pans']);
+          }
+          if (data['mutes'] != null) {
+            savedMutes = Map<String, bool>.from(data['mutes']);
+          }
+          if (data['solos'] != null) {
+            savedSolos = Map<String, bool>.from(data['solos']);
+          }
           if (data['pitchShift'] != null) _pitchShiftSemitones = (data['pitchShift'] as num).toDouble();
           if (data['tempo'] != null) {
             _currentTempo = (data['tempo'] as num).toDouble();
             _playbackSpeed = _currentTempo / _baseTempo;
           }
           if (data['metronomeVolume'] != null) _metronomeVolume = (data['metronomeVolume'] as num).toDouble();
+          if (data['metronomePan'] != null) _metronomePan = (data['metronomePan'] as num).toDouble();
           if (data['subdivision'] != null) _subdivision = (data['subdivision'] as num).toDouble();
           if (data['isMetronomeOn'] != null) _isMetronomeOn = data['isMetronomeOn'] as bool;
         } catch (_) {}
@@ -877,17 +916,33 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
            
            double raw = (_isMetronomeOn && _subdivision == sub) ? _getAmplitudeFromSlider(_metronomeVolume) : 0.0;
            SoLoud.instance.setVolume(handle, raw);
+           SoLoud.instance.setPan(handle, _metronomePan);
            _metronomeTracks[sub] = TrackData(name: filename, handle: handle, source: source, file: audioFile, volume: _metronomeVolume);
         } else {
-            double initialVol = savedVolumes.containsKey(filename) ? savedVolumes[filename]! : 0.7;
-            SoLoud.instance.setVolume(handle, _getAmplitudeFromSlider(initialVol)); 
-            _tracks.add(TrackData(name: filename, handle: handle, source: source, file: audioFile, volume: initialVol));
+              double initialVol = savedVolumes.containsKey(filename) ? savedVolumes[filename]! : 0.7;
+              double initialPan = savedPans.containsKey(filename) ? savedPans[filename]! : 0.0;
+              bool initialMute = savedMutes.containsKey(filename) ? savedMutes[filename]! : false;
+              bool initialSolo = savedSolos.containsKey(filename) ? savedSolos[filename]! : false;
+              
+              SoLoud.instance.setVolume(handle, _getAmplitudeFromSlider(initialVol));
+              SoLoud.instance.setPan(handle, initialPan);
+              _tracks.add(TrackData(
+                name: filename, 
+                handle: handle, 
+                source: source, 
+                file: audioFile, 
+                volume: initialVol,
+                pan: initialPan,
+                isMuted: initialMute,
+                isSoloed: initialSolo,
+              ));
         }
         
         _songLength = SoLoud.instance.getLength(source).inMilliseconds / 1000.0;
         if (_songLength <= 0.0) _songLength = 1.0;
       }
 
+      _updateTrackVolumes();
       setState(() { _isLoading = false; });
 
     } catch (e) {
@@ -955,6 +1010,76 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       }
     }
   }
+
+  void _showTrackOptions(TrackData track) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Options: ${track.name.split('.').first}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: track.isSoloed ? Colors.tealAccent : Colors.grey[800],
+                          foregroundColor: track.isSoloed ? Colors.black : Colors.white,
+                        ),
+                        icon: const Icon(Icons.headphones),
+                        label: const Text("Solo"),
+                        onPressed: () {
+                          setState(() { track.isSoloed = !track.isSoloed; });
+                          setModalState(() {});
+                          _updateTrackVolumes();
+                        },
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: track.isMuted ? Colors.redAccent : Colors.grey[800],
+                          foregroundColor: track.isMuted ? Colors.white : Colors.white,
+                        ),
+                        icon: const Icon(Icons.volume_off),
+                        label: const Text("Mute"),
+                        onPressed: () {
+                          setState(() { track.isMuted = !track.isMuted; });
+                          setModalState(() {});
+                          _updateTrackVolumes();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Align(alignment: Alignment.centerLeft, child: Text("Stereo Panning (L / R)", style: TextStyle(color: Colors.grey))),
+                  Slider(
+                    value: track.pan,
+                    min: -1.0,
+                    max: 1.0,
+                    activeColor: Colors.tealAccent,
+                    inactiveColor: Colors.grey[800],
+                    onChanged: (v) {
+                      setState(() { track.pan = v; });
+                      setModalState(() {});
+                      SoLoud.instance.setPan(track.handle, v);
+                    },
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
 
   void _showMetronomeMenu() {
     showModalBottomSheet(
@@ -1046,7 +1171,20 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               const Text("L & R", style: TextStyle(color: Colors.grey)),
-                              Slider(value: 0.5, onChanged: (v){}),
+                              Slider(
+                                value: _metronomePan,
+                                min: -1.0,
+                                max: 1.0,
+                                activeColor: Colors.tealAccent,
+                                inactiveColor: Colors.grey[800],
+                                onChanged: (v) {
+                                  _metronomePan = v;
+                                  setModalState(() {});
+                                  for (var entry in _metronomeTracks.values) {
+                                    SoLoud.instance.setPan(entry.handle, _metronomePan);
+                                  }
+                                },
+                              ),
                             ],
                           ),
                         )
@@ -1281,13 +1419,20 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       'pitchShift': _pitchShiftSemitones,
       'tempo': _currentTempo,
       'metronomeVolume': _metronomeVolume,
+      'metronomePan': _metronomePan,
       'subdivision': _subdivision,
       'isMetronomeOn': _isMetronomeOn,
-      'volumes': <String, double>{}
+      'volumes': <String, double>{},
+      'pans': <String, double>{},
+      'mutes': <String, bool>{},
+      'solos': <String, bool>{},
     };
     
     for (var t in _tracks) {
       data['volumes'][t.name] = t.volume;
+      data['pans'][t.name] = t.pan;
+      data['mutes'][t.name] = t.isMuted;
+      data['solos'][t.name] = t.isSoloed;
     }
     
     try {
@@ -1603,20 +1748,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                             }
                                             val = 0.7;
                                           }
-
-                                          double amp;
-                                          if (val <= 0.7) {
-                                            // Smooth exponential fade-in up to YT Music baseline (+6dB amplitude = 2.0)
-                                            double normalized = val / 0.7;
-                                            amp = (normalized * normalized) * 2.0; 
-                                          } else {
-                                            // The remaining 30% adds exactly +3dB (1.412x amplitude multiplier)
-                                            // Baseline = 2.0. Max = 2.0 * 1.412 = 2.824.
-                                            double normalized = (val - 0.7) / 0.3;
-                                            amp = 2.0 + (normalized * 0.824);
-                                          }
-                                          SoLoud.instance.setVolume(track.handle, amp);
                                           setSliderState(() { track.volume = val; });
+                                          _updateTrackVolumes();
                                         },
                                       ),
                                     ],
@@ -1627,7 +1760,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           )
                         ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.more_vert, color: Colors.grey),
+                      IconButton(
+                        icon: const Icon(Icons.more_vert, color: Colors.grey),
+                        onPressed: () => _showTrackOptions(track),
+                      ),
                     ],
                   ),
                 );
