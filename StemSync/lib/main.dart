@@ -1774,7 +1774,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               }),
               const SizedBox(width: 32),
               _buildBottomToggleBtn(Icons.view_carousel, _showSections, () {
+                final wasOff = !_showSections;
                 setState(() => _showSections = !_showSections);
+                if (wasOff) {
+                  // Panel just opened — scroll to current section after layout.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final idx = _activeSectionNotifier.value;
+                    if (idx >= 0 && _sectionScrollController.hasClients) {
+                      const double pillWidth = 120.0;
+                      final double target = (idx * pillWidth) - 80.0;
+                      _sectionScrollController.jumpTo(
+                        target.clamp(0.0, _sectionScrollController.position.maxScrollExtent),
+                      );
+                    }
+                  });
+                }
               }),
             ],
           ),
