@@ -1227,7 +1227,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   Future<void> _initializeApp() async {
     try {
-      await SoLoud.instance.init(bufferSize: 4096);
+      await SoLoud.instance.init(bufferSize: 8192, lowLatency: false);
     } catch (e) {
       debugPrint("Initial SoLoud init failed: $e");
       try {
@@ -1235,7 +1235,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 500));
       try {
-        await SoLoud.instance.init(bufferSize: 4096);
+        await SoLoud.instance.init(bufferSize: 8192, lowLatency: false);
       } catch (e2) {
         debugPrint("SoLoud completely failed to init: $e2");
       }
