@@ -269,39 +269,65 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         
     print("Generated song_metadata.json")
     
-    print("Generating mathematically perfect Metronome track...")
+    print("Generating SMART dynamic Metronome tracks...")
     import soundfile as sf
     import numpy as np
     
     duration = librosa.get_duration(y=y, sr=sr)
     if len(beat_times) > 0:
-        interval = 60.0 / bpm
-        first_beat = beat_times[0]
+        # beat_times is the array of actual human beats detected by librosa
+        dynamic_beats = list(beat_times)
         
-        # 1. Project backwards to 0.0 so it doesn't wait for the drums
-        while first_beat >= interval:
-            first_beat -= interval
+        # 1. Project backwards to 0.0 using the first available beat interval
+        if len(dynamic_beats) >= 2:
+            avg_intro_interval = dynamic_beats[1] - dynamic_beats[0]
+        else:
+            avg_intro_interval = 60.0 / bpm
             
-        # 2. Add 45ms shift to compensate for MP3 encoder padding when played alongside .mp3 stems in SoLoud
-        first_beat += 0.045
+        first_beat = dynamic_beats[0]
+        while first_beat >= avg_intro_interval:
+            first_beat -= avg_intro_interval
+            dynamic_beats.insert(0, first_beat)
+            
+        # 2. Project forwards to the end of the song if librosa stopped detecting early
+        if len(dynamic_beats) >= 2:
+            avg_outro_interval = dynamic_beats[-1] - dynamic_beats[-2]
+        else:
+            avg_outro_interval = 60.0 / bpm
+            
+        last_beat = dynamic_beats[-1]
+        while last_beat + avg_outro_interval <= duration:
+            last_beat += avg_outro_interval
+            dynamic_beats.append(last_beat)
+            
+        dynamic_beats = np.array(dynamic_beats)
         
-        # 1x Subdivision
-        rigid_beats_1x = np.arange(first_beat, duration, interval)
-        click_track_1x = librosa.clicks(times=rigid_beats_1x, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
+        # Add 45ms shift for MP3 encoder padding when played alongside MP3 stems in SoLoud
+        dynamic_beats += 0.045
+        
+        # 1x Subdivision (Dynamic)
+        click_track_1x = librosa.clicks(times=dynamic_beats, sr=sr, click_freq=1500.0, click_duration=0.1, length=len(y))
         path_1x = stem_folder / "0_Metronome_1x.wav"
         sf.write(str(path_1x), click_track_1x, sr)
         audio_files.append(path_1x)
         
-        # 0.5x Subdivision (Half Time)
-        rigid_beats_05x = np.arange(first_beat, duration, interval * 2.0)
-        click_track_05x = librosa.clicks(times=rigid_beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
+        # 0.5x Subdivision (Dynamic Half Time - Take every other beat)
+        beats_05x = dynamic_beats[::2]
+        click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
         path_05x = stem_folder / "0_Metronome_0_5x.wav"
         sf.write(str(path_05x), click_track_05x, sr)
         audio_files.append(path_05x)
         
-        # 2x Subdivision (Double Time)
-        rigid_beats_2x = np.arange(first_beat, duration, interval / 2.0)
-        click_track_2x = librosa.clicks(times=rigid_beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
+        # 2x Subdivision (Dynamic Double Time - Interpolate exactly halfway between each dynamic beat)
+        beats_2x = []
+        for i in range(len(dynamic_beats) - 1):
+            beats_2x.append(dynamic_beats[i])
+            halfway = (dynamic_beats[i] + dynamic_beats[i+1]) / 2.0
+            beats_2x.append(halfway)
+        beats_2x.append(dynamic_beats[-1])
+        beats_2x = np.array(beats_2x)
+        
+        click_track_2x = librosa.clicks(times=beats_2x, sr=sr, click_freq=2000.0, click_duration=0.1, length=len(y))
         path_2x = stem_folder / "0_Metronome_2x.wav"
         sf.write(str(path_2x), click_track_2x, sr)
         audio_files.append(path_2x)
