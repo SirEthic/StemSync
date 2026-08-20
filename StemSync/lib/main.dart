@@ -1748,21 +1748,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _getIconForTrack(track.name),
-                            if (track.isSoloed || track.isMuted)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (track.isSoloed)
-                                      Text("S", style: TextStyle(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                                    if (track.isSoloed && track.isMuted)
-                                      const SizedBox(width: 4),
-                                    if (track.isMuted)
-                                      Text("M", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: track.isSoloed ? Colors.tealAccent.withOpacity(0.2) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: track.isSoloed ? Colors.tealAccent : Colors.grey[800]!),
+                                    ),
+                                    child: Text("S", style: TextStyle(
+                                      color: track.isSoloed ? Colors.tealAccent : Colors.grey[600], 
+                                      fontSize: 10, 
+                                      fontWeight: FontWeight.bold
+                                    )),
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: track.isMuted ? Colors.redAccent.withOpacity(0.2) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: track.isMuted ? Colors.redAccent : Colors.grey[800]!),
+                                    ),
+                                    child: Text("M", style: TextStyle(
+                                      color: track.isMuted ? Colors.redAccent : Colors.grey[600], 
+                                      fontSize: 10, 
+                                      fontWeight: FontWeight.bold
+                                    )),
+                                  ),
+                                ],
                               ),
+                            ),
                           ],
                         ),
                       ),
