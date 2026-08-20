@@ -841,11 +841,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
       _stemsBus = SoLoud.instance.createMixingBus(name: 'stems');
       _stemsBus!.playOnEngine();
-      try {
-        _stemsBus!.filters.pitchShiftFilter.activate();
-      } catch (e) {
-        debugPrint("Failed to activate bus pitch filter: $e");
-      }
+      // Pitch shift filter is activated lazily in _applyPitchAndTempo only when needed.
 
       for (var audioFile in audioFiles) {
         final filename = audioFile.path.split(Platform.pathSeparator).last;
@@ -920,13 +916,25 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       SoLoud.instance.setRelativePlaySpeed(t.handle, _playbackSpeed);
     }
     
-    // Total shift must counteract the tempo speed-up AND apply the user's requested key transposition
+    // Total shift must counteract the tempo speed-up AND apply user's key transposition.
     double tempoShift = 1.0 / _playbackSpeed;
     double keyShift = pow(2.0, _pitchShiftSemitones / 12.0).toDouble();
+    double totalShift = tempoShift * keyShift;
     
     if (_stemsBus != null) {
       try {
-        _stemsBus!.filters.pitchShiftFilter.shift().value = tempoShift * keyShift;
+        const double epsilon = 0.001;
+        final bool needsShift = (totalShift - 1.0).abs() > epsilon;
+        final bool isActive = _stemsBus!.filters.pitchShiftFilter.isActive;
+        
+        if (needsShift) {
+          // Activate filter only if it isn't already on.
+          if (!isActive) _stemsBus!.filters.pitchShiftFilter.activate();
+          _stemsBus!.filters.pitchShiftFilter.shift().value = totalShift;
+        } else {
+          // No shift needed — deactivate so the FFT stops running entirely.
+          if (isActive) _stemsBus!.filters.pitchShiftFilter.deactivate();
+        }
       } catch (e) {
         debugPrint("Error setting pitch shift on bus: $e");
       }
@@ -1204,7 +1212,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   Future<void> _initializeApp() async {
     try {
-      await SoLoud.instance.init();
+      await SoLoud.instance.init(bufferSize: 4096);
     } catch (e) {
       debugPrint("Initial SoLoud init failed: $e");
       try {
@@ -1212,7 +1220,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 500));
       try {
-        await SoLoud.instance.init();
+        await SoLoud.instance.init(bufferSize: 4096);
       } catch (e2) {
         debugPrint("SoLoud completely failed to init: $e2");
       }
