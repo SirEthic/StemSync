@@ -103,8 +103,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   bool _isMetronomeOn = false;
   
   // View States
-  bool _showChords = true;
-  bool _showSections = true;
+  bool _showChords = false;
+  bool _showSections = false;
   bool _showLyrics = false;
   
   double _baseTempo = 120.0;
@@ -783,6 +783,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _pitchShiftSemitones = 0.0;
       _lyrics.clear();
       _activeLyricNotifier.value = -1;
+      _showChords = false;
+      _showSections = false;
+      _showLyrics = false;
 
       final metaFile = File('${targetDir.path}/song_metadata.json');
       if (metaFile.existsSync()) {
