@@ -1059,17 +1059,36 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   ),
                   const SizedBox(height: 24),
                   const Align(alignment: Alignment.centerLeft, child: Text("Stereo Panning (L / R)", style: TextStyle(color: Colors.grey))),
-                  Slider(
-                    value: track.pan,
-                    min: -1.0,
-                    max: 1.0,
-                    activeColor: Colors.tealAccent,
-                    inactiveColor: Colors.grey[800],
-                    onChanged: (v) {
-                      setState(() { track.pan = v; });
-                      setModalState(() {});
-                      SoLoud.instance.setPan(track.handle, v);
-                    },
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        left: (MediaQuery.of(context).size.width - 48.0) / 2, // Approximate center of the slider track
+                        child: Container(
+                          width: 2,
+                          height: 12,
+                          color: Colors.white54,
+                        ),
+                      ),
+                      Slider(
+                        value: track.pan,
+                        min: -1.0,
+                        max: 1.0,
+                        activeColor: Colors.tealAccent,
+                        inactiveColor: Colors.grey[800],
+                        onChanged: (v) {
+                          if (v.abs() < 0.1) {
+                            if (track.pan != 0.0) {
+                              HapticFeedback.selectionClick();
+                            }
+                            v = 0.0;
+                          }
+                          setState(() { track.pan = v; });
+                          setModalState(() {});
+                          SoLoud.instance.setPan(track.handle, v);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1171,19 +1190,38 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               const Text("L & R", style: TextStyle(color: Colors.grey)),
-                              Slider(
-                                value: _metronomePan,
-                                min: -1.0,
-                                max: 1.0,
-                                activeColor: Colors.tealAccent,
-                                inactiveColor: Colors.grey[800],
-                                onChanged: (v) {
-                                  _metronomePan = v;
-                                  setModalState(() {});
-                                  for (var entry in _metronomeTracks.values) {
-                                    SoLoud.instance.setPan(entry.handle, _metronomePan);
-                                  }
-                                },
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Positioned(
+                                    left: (MediaQuery.of(context).size.width / 2.0 - 48.0) / 2, 
+                                    child: Container(
+                                      width: 2,
+                                      height: 12,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                  Slider(
+                                    value: _metronomePan,
+                                    min: -1.0,
+                                    max: 1.0,
+                                    activeColor: Colors.tealAccent,
+                                    inactiveColor: Colors.grey[800],
+                                    onChanged: (v) {
+                                      if (v.abs() < 0.1) {
+                                        if (_metronomePan != 0.0) {
+                                          HapticFeedback.selectionClick();
+                                        }
+                                        v = 0.0;
+                                      }
+                                      _metronomePan = v;
+                                      setModalState(() {});
+                                      for (var entry in _metronomeTracks.values) {
+                                        SoLoud.instance.setPan(entry.handle, _metronomePan);
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ],
                           ),
