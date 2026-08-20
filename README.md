@@ -27,7 +27,7 @@ The packager analyzes your stems and produces a .zip file containing the audio, 
 
 Python 3.9 or higher.
 
-`ash
+`
 pip install librosa soundfile shazamio customtkinter numpy syncedlyrics
 `
 
@@ -56,7 +56,7 @@ The Flutter mobile app loads the packaged .zip files for playback. Features incl
 
 ### Running
 
-`ash
+`
 cd StemSync
 flutter pub get
 flutter run
