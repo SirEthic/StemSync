@@ -17,3 +17,11 @@ venv/
 .idea/
 .vscode/
 *.log
+
+# PyInstaller artifacts
+packager/build/
+packager/dist/
+packager/*.spec
+packager/*.iss
+packager/*.ico
+release_notes.md
