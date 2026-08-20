@@ -1074,33 +1074,37 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   ),
                   const SizedBox(height: 24),
                   const Align(alignment: Alignment.centerLeft, child: Text("Stereo Panning (L / R)", style: TextStyle(color: Colors.grey))),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 2,
-                        height: 12,
-                        color: Colors.white54,
-                      ),
-                      Slider(
-                        value: track.pan,
-                        min: -1.0,
-                        max: 1.0,
-                        activeColor: Colors.tealAccent,
-                        inactiveColor: Colors.grey[800],
-                        onChanged: (v) {
-                          if (v.abs() < 0.1) {
-                            if (track.pan != 0.0) {
-                              HapticFeedback.selectionClick();
-                            }
-                            v = 0.0;
-                          }
-                          setState(() { track.pan = v; });
-                          setModalState(() {});
-                          SoLoud.instance.setPan(track.handle, v);
-                        },
-                      ),
-                    ],
+                  StatefulBuilder(
+                    builder: (context, setSliderState) {
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 2,
+                            height: 12,
+                            color: Colors.white54,
+                          ),
+                          Slider(
+                            value: track.pan,
+                            min: -1.0,
+                            max: 1.0,
+                            activeColor: Colors.tealAccent,
+                            inactiveColor: Colors.grey[800],
+                            onChanged: (v) {
+                              if (v.abs() < 0.1) {
+                                if (track.pan != 0.0) {
+                                  HapticFeedback.selectionClick();
+                                }
+                                v = 0.0;
+                              }
+                              track.pan = v;
+                              setSliderState(() {});
+                              SoLoud.instance.setPan(track.handle, v);
+                            },
+                          ),
+                        ],
+                      );
+                    }
                   ),
                 ],
               ),
@@ -1202,35 +1206,39 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               const Text("L & R", style: TextStyle(color: Colors.grey)),
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Container(
-                                    width: 2,
-                                    height: 12,
-                                    color: Colors.white54,
-                                  ),
-                                  Slider(
-                                    value: _metronomePan,
-                                    min: -1.0,
-                                    max: 1.0,
-                                    activeColor: Colors.tealAccent,
-                                    inactiveColor: Colors.grey[800],
-                                    onChanged: (v) {
-                                      if (v.abs() < 0.1) {
-                                        if (_metronomePan != 0.0) {
-                                          HapticFeedback.selectionClick();
-                                        }
-                                        v = 0.0;
-                                      }
-                                      _metronomePan = v;
-                                      setModalState(() {});
-                                      for (var entry in _metronomeTracks.values) {
-                                        SoLoud.instance.setPan(entry.handle, _metronomePan);
-                                      }
-                                    },
-                                  ),
-                                ],
+                              StatefulBuilder(
+                                builder: (context, setSliderState) {
+                                  return Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Container(
+                                        width: 2,
+                                        height: 12,
+                                        color: Colors.white54,
+                                      ),
+                                      Slider(
+                                        value: _metronomePan,
+                                        min: -1.0,
+                                        max: 1.0,
+                                        activeColor: Colors.tealAccent,
+                                        inactiveColor: Colors.grey[800],
+                                        onChanged: (v) {
+                                          if (v.abs() < 0.1) {
+                                            if (_metronomePan != 0.0) {
+                                              HapticFeedback.selectionClick();
+                                            }
+                                            v = 0.0;
+                                          }
+                                          _metronomePan = v;
+                                          setSliderState(() {});
+                                          for (var entry in _metronomeTracks.values) {
+                                            SoLoud.instance.setPan(entry.handle, _metronomePan);
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                }
                               ),
                             ],
                           ),
