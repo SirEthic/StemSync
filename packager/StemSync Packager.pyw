@@ -98,8 +98,19 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     else:
         print(f"Using manual Artist Name: {artist_name}")
             
-    # Run the beat tracker on the full mix so it catches drum-less intros
-    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    # Find the best audio source for beat detection
+    y_percussion = None
+    for file in audio_files:
+        if "drums" in file.name.lower() or "percussion" in file.name.lower():
+            y_percussion, _ = librosa.load(file, sr=sr)
+            print(f"Using {file.name} for crystal clear transient beat detection!")
+            break
+            
+    if y_percussion is None:
+        y_percussion = y
+        print("No isolated drums found. Falling back to full mix for beat detection.")
+            
+    tempo, beat_frames = librosa.beat.beat_track(y=y_percussion, sr=sr)
     
     # Convert frames to exact timestamps (seconds)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
@@ -315,8 +326,19 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
             sf.write(str(path_1x), click_track_1x, sr, format='FLAC')
             audio_files.append(path_1x)
             
-            # 0.5x Subdivision (Dynamic Half Time - Take every other beat)
-            beats_05x = dynamic_beats[::2]
+            # 0.5x Subdivision (Dynamic Half Time - Safely skip ghost transients to prevent de-sync)
+            beats_05x = []
+            if len(dynamic_beats) > 0:
+                beats_05x.append(dynamic_beats[0])
+                avg_interval = 60.0 / (bpm if bpm > 0 else 120.0)
+                last_clicked = dynamic_beats[0]
+                
+                for b in dynamic_beats[1:]:
+                    if (b - last_clicked) >= (avg_interval * 1.5):
+                        beats_05x.append(b)
+                        last_clicked = b
+            
+            beats_05x = np.array(beats_05x)
             click_track_05x = librosa.clicks(times=beats_05x, sr=sr, click_freq=1000.0, click_duration=0.1, length=len(y))
             path_05x = stem_folder / "0_Metronome_0_5x.flac"
             sf.write(str(path_05x), click_track_05x, sr, format='FLAC')

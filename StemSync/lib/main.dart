@@ -18,17 +18,18 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
-  final bytes = File(args['zipPath']!).readAsBytesSync();
   final targetPath = args['targetPath']!;
-  final archive = ZipDecoder().decodeBytes(bytes);
+  final inputStream = InputFileStream(args['zipPath']!);
+  final archive = ZipDecoder().decodeBuffer(inputStream);
+  
   for (final archiveFile in archive) {
     if (archiveFile.isFile) {
-      final data = archiveFile.content as List<int>;
-      File('$targetPath/${archiveFile.name}')
-        ..createSync(recursive: true)
-        ..writeAsBytesSync(data);
+      final outputStream = OutputFileStream('$targetPath/${archiveFile.name}');
+      archiveFile.writeContent(outputStream);
+      outputStream.close();
     }
   }
+  inputStream.close();
 }
 
 class LyricLine {
