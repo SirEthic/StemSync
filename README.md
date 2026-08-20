@@ -10,12 +10,14 @@ Before using StemSync, you need to split a song into its individual instruments 
 
 1. Download and install UVR5.
 2. Open UVR5, load your song, and select a **Demucs** model (htdemucs_ft is recommended).
-3. Set the output to **4 stems**. This produces:
-   - ocals.mp3
+3. Set the output to **6 stems**. This produces:
+   - vocals.mp3
    - drums.mp3
-   - ass.mp3
+   - bass.mp3
+   - guitar.mp3
+   - piano.mp3
    - other.mp3
-4. Place all four files into a single folder named after your song (e.g., Ufaq/).
+4. Place all four files into a single folder named after your song.
 
 ---
 
