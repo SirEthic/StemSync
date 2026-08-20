@@ -1744,7 +1744,27 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     children: [
                       SizedBox(
                         width: 50,
-                        child: Center(child: _getIconForTrack(track.name)),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _getIconForTrack(track.name),
+                            if (track.isSoloed || track.isMuted)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (track.isSoloed)
+                                      Text("S", style: TextStyle(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    if (track.isSoloed && track.isMuted)
+                                      const SizedBox(width: 4),
+                                    if (track.isMuted)
+                                      Text("M", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       Expanded(
                           child: StatefulBuilder(
@@ -1792,50 +1812,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           )
                         ),
                       const SizedBox(width: 8),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() { track.isSoloed = !track.isSoloed; });
-                              _updateTrackVolumes();
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: track.isSoloed ? Colors.tealAccent.withOpacity(0.2) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: track.isSoloed ? Colors.tealAccent : Colors.grey[800]!),
-                              ),
-                              child: Text("S", style: TextStyle(
-                                color: track.isSoloed ? Colors.tealAccent : Colors.grey[600], 
-                                fontSize: 12, 
-                                fontWeight: FontWeight.bold
-                              )),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() { track.isMuted = !track.isMuted; });
-                              _updateTrackVolumes();
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: track.isMuted ? Colors.redAccent.withOpacity(0.2) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: track.isMuted ? Colors.redAccent : Colors.grey[800]!),
-                              ),
-                              child: Text("M", style: TextStyle(
-                                color: track.isMuted ? Colors.redAccent : Colors.grey[600], 
-                                fontSize: 12, 
-                                fontWeight: FontWeight.bold
-                              )),
-                            ),
-                          ),
-                        ],
-                      ),
                       IconButton(
                         icon: const Icon(Icons.more_vert, color: Colors.grey),
                         onPressed: () => _showTrackOptions(track),
