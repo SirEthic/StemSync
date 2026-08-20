@@ -1062,13 +1062,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      Positioned(
-                        left: (MediaQuery.of(context).size.width - 48.0) / 2, // Approximate center of the slider track
-                        child: Container(
-                          width: 2,
-                          height: 12,
-                          color: Colors.white54,
-                        ),
+                      Container(
+                        width: 2,
+                        height: 12,
+                        color: Colors.white54,
                       ),
                       Slider(
                         value: track.pan,
@@ -1193,13 +1190,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                               Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  Positioned(
-                                    left: (MediaQuery.of(context).size.width / 2.0 - 48.0) / 2, 
-                                    child: Container(
-                                      width: 2,
-                                      height: 12,
-                                      color: Colors.white54,
-                                    ),
+                                  Container(
+                                    width: 2,
+                                    height: 12,
+                                    color: Colors.white54,
                                   ),
                                   Slider(
                                     value: _metronomePan,
