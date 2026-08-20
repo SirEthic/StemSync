@@ -17,7 +17,7 @@ Before using StemSync, you need to split a song into its individual instruments 
    - guitar.mp3
    - piano.mp3
    - other.mp3
-4. Place all four files into a single folder named after your song.
+4. Place all six files into a single folder named after your song.
 
 ---
 
