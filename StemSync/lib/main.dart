@@ -1082,9 +1082,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         }),
                         Expanded(
                           child: Slider(
-                            value: _currentTempo.clamp(max(10.0, _baseTempo - 30.0), min(300.0, _baseTempo + 30.0)),
-                            min: max(10.0, _baseTempo - 30.0),
-                            max: min(300.0, _baseTempo + 30.0),
+                            value: _currentTempo.clamp(max(10.0, _baseTempo * 0.5), min(300.0, _baseTempo * 2.0)),
+                            min: max(10.0, _baseTempo * 0.5),
+                            max: min(300.0, _baseTempo * 2.0),
                             activeColor: Colors.grey,
                             inactiveColor: Colors.grey[800],
                             onChanged: (v) {
