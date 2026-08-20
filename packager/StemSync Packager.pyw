@@ -214,113 +214,66 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         best_chord = chord_names[chord_idx] if chord_idx >= 0 else "N/C"
         chords_output.append({"time": float(beat_times[j]) + 0.045, "chord": best_chord})
 
-    # ==== STRUCTURAL SEGMENTATION (allin1 deep learning model) ====
-    print("Detecting song sections (neural network)...")
+    # ==== STRUCTURAL SEGMENTATION (Spectral Heuristic) ====
+    print("Detecting song sections (Spectral Heuristic)...")
     sections_output = []
     try:
-        import allin1
-        import soundfile as sf
-        import tempfile, os
+        # MFCC + Spectral Contrast clustering + RMS loudness labelling
+        mfcc_full     = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+        contrast_full = librosa.feature.spectral_contrast(y=y, sr=sr)
         
-        # Write the summed full-mix array to a temp WAV so allin1 can read it.
-        # We never ship this file — it is deleted immediately after analysis.
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp_path = tmp.name
-        sf.write(tmp_path, y, sr)
+        def norm_feat(f):
+            std = f.std(axis=1, keepdims=True)
+            std[std == 0] = 1
+            return (f - f.mean(axis=1, keepdims=True)) / std
         
-        print("Running allin1 structural analysis (first run downloads ~200MB model)...")
-        result = allin1.analyze(tmp_path)
+        combined = np.vstack([norm_feat(mfcc_full), norm_feat(contrast_full)])
+        beat_frames_full = librosa.time_to_frames(beat_times, sr=sr)
         
-        # Clean up immediately
-        try:
-            os.unlink(tmp_path)
-        except Exception:
-            pass
-        
-        # result.segments is a list of objects with .label, .start, .end
-        # Labels from the model: 'intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', etc.
-        label_counts = {}
-        for seg in result.segments:
-            raw_label = seg.label.strip().lower()
+        if len(beat_frames_full) > 10:
+            total_frames = combined.shape[1]
+            valid_beats  = [f for f in beat_frames_full if 0 < f < total_frames]
+            full_frames  = sorted(list(set([0] + valid_beats + [total_frames])))
+            feat_sync    = librosa.util.sync(combined, full_frames, pad=False)
+            n_sections   = min(10, max(4, feat_sync.shape[1] // 14))
+            bounds       = librosa.segment.agglomerative(feat_sync, n_sections)
             
-            # Capitalize nicely: 'pre-chorus' → 'Pre-Chorus'
-            display = '-'.join(word.capitalize() for word in raw_label.split('-'))
+            bound_times = [float(librosa.frames_to_time(full_frames[b], sr=sr)) for b in bounds]
+            bound_times.append(float(librosa.get_duration(y=y, sr=sr)))
             
-            # Number duplicate labels: Verse, Verse 2, Verse 3...
-            if raw_label in ('intro', 'outro'):
-                label = display  # Never number these
-            else:
-                label_counts[display] = label_counts.get(display, 0) + 1
-                n = label_counts[display]
-                label = display if n == 1 else f"{display} {n}"
+            merged_bounds = [bound_times[0]]
+            for i in range(1, len(bound_times) - 1):
+                if bound_times[i] - merged_bounds[-1] >= 12.0:
+                    merged_bounds.append(bound_times[i])
+            merged_bounds.append(bound_times[-1])
             
-            sections_output.append({
-                "name": label,
-                "start_time": float(seg.start) + 0.045,
-                "end_time":   float(seg.end)   + 0.045,
-            })
-        
-        print(f"allin1 detected {len(sections_output)} sections.")
-        
+            seg_rms = []
+            for i in range(len(merged_bounds) - 1):
+                chunk = y[int(merged_bounds[i]*sr):int(merged_bounds[i+1]*sr)]
+                seg_rms.append(float(np.sqrt(np.mean(chunk**2))) if len(chunk) > 0 else 0.0)
+            
+            n_segs = len(seg_rms)
+            chorus_idxs = set(idx for idx, _ in sorted(enumerate(seg_rms), key=lambda x: x[1], reverse=True)[:max(1, round(n_segs*0.40))])
+            chorus_count = verse_count = 0
+            
+            for i in range(n_segs):
+                start_t, end_t = merged_bounds[i], merged_bounds[i+1]
+                if i == 0:
+                    label = "Intro"
+                elif i == n_segs - 1:
+                    label = "Outro"
+                elif i in chorus_idxs:
+                    chorus_count += 1
+                    label = "Chorus" if chorus_count == 1 else f"Chorus {chorus_count}"
+                elif i > n_segs // 2 and verse_count >= 2 and chorus_count >= 1:
+                    label = "Bridge"
+                else:
+                    verse_count += 1
+                    label = "Verse" if verse_count == 1 else f"Verse {verse_count}"
+                sections_output.append({"name": label, "start_time": start_t + 0.045, "end_time": end_t + 0.045})
     except Exception as e:
-        print(f"allin1 section detection failed ({e}). Falling back to spectral heuristic...")
-        try:
-            # Fallback: MFCC + Spectral Contrast clustering + RMS loudness labelling
-            mfcc_full     = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-            contrast_full = librosa.feature.spectral_contrast(y=y, sr=sr)
-            
-            def norm_feat(f):
-                std = f.std(axis=1, keepdims=True)
-                std[std == 0] = 1
-                return (f - f.mean(axis=1, keepdims=True)) / std
-            
-            combined = np.vstack([norm_feat(mfcc_full), norm_feat(contrast_full)])
-            beat_frames_full = librosa.time_to_frames(beat_times, sr=sr)
-            
-            if len(beat_frames_full) > 10:
-                total_frames = combined.shape[1]
-                valid_beats  = [f for f in beat_frames_full if 0 < f < total_frames]
-                full_frames  = sorted(list(set([0] + valid_beats + [total_frames])))
-                feat_sync    = librosa.util.sync(combined, full_frames, pad=False)
-                n_sections   = min(10, max(4, feat_sync.shape[1] // 14))
-                bounds       = librosa.segment.agglomerative(feat_sync, n_sections)
-                
-                bound_times = [float(librosa.frames_to_time(full_frames[b], sr=sr)) for b in bounds]
-                bound_times.append(float(librosa.get_duration(y=y, sr=sr)))
-                
-                merged_bounds = [bound_times[0]]
-                for i in range(1, len(bound_times) - 1):
-                    if bound_times[i] - merged_bounds[-1] >= 12.0:
-                        merged_bounds.append(bound_times[i])
-                merged_bounds.append(bound_times[-1])
-                
-                seg_rms = []
-                for i in range(len(merged_bounds) - 1):
-                    chunk = y[int(merged_bounds[i]*sr):int(merged_bounds[i+1]*sr)]
-                    seg_rms.append(float(np.sqrt(np.mean(chunk**2))) if len(chunk) > 0 else 0.0)
-                
-                n_segs = len(seg_rms)
-                chorus_idxs = set(idx for idx, _ in sorted(enumerate(seg_rms), key=lambda x: x[1], reverse=True)[:max(1, round(n_segs*0.40))])
-                chorus_count = verse_count = 0
-                
-                for i in range(n_segs):
-                    start_t, end_t = merged_bounds[i], merged_bounds[i+1]
-                    if i == 0:
-                        label = "Intro"
-                    elif i == n_segs - 1:
-                        label = "Outro"
-                    elif i in chorus_idxs:
-                        chorus_count += 1
-                        label = "Chorus" if chorus_count == 1 else f"Chorus {chorus_count}"
-                    elif i > n_segs // 2 and verse_count >= 2 and chorus_count >= 1:
-                        label = "Bridge"
-                    else:
-                        verse_count += 1
-                        label = "Verse" if verse_count == 1 else f"Verse {verse_count}"
-                    sections_output.append({"name": label, "start_time": start_t + 0.045, "end_time": end_t + 0.045})
-        except Exception as e2:
-            print(f"Warning: Fallback section detection also failed: {e2}")
-            sections_output = []
+        print(f"Warning: Section detection failed: {e}")
+        sections_output = []= []
 
     duration = librosa.get_duration(y=y, sr=sr)
     interval = 60.0 / bpm if bpm > 0 else 0.5
