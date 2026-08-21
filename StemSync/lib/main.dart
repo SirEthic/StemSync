@@ -530,7 +530,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 builder: (context, setModalState) {
                   return ListTile(
                     contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                    leading: Icon(_isSongLooping ? Icons.repeat : Icons.repeat_one, color: Colors.orangeAccent),
+                    leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.orangeAccent),
                     title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.orangeAccent)),
                     trailing: Switch(
                       value: _isSongLooping,
