@@ -132,10 +132,12 @@ class ChordSheetGenerator {
 
       // ── Header ────────────────────────────────────────────────────────
       if (isFirst) {
+        // Title centred on its own line
         final double titleSize = 18.0;
         final double titleW = title.length * titleSize * 0.55;
-        txt(title, (_pw - titleW) / 2, _margin + 16, titleSize);
-        txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 16, 10);
+        txt(title, (_pw - titleW) / 2, _margin + 18, titleSize);
+        // Tempo on the line below, left-aligned
+        txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 38, 10);
       }
 
       // ── Rows ──────────────────────────────────────────────────────────
@@ -206,7 +208,8 @@ class ChordSheetGenerator {
     //  4+numPages..4+2*numPages-1 = Content streams
     final int firstPageObj = 4;
     final int firstContentObj = 4 + numPages;
-    final int totalObjs = 4 + 2 * numPages; // objects 1..totalObjs
+    // Highest object ID = 3 (font) + numPages (pages) + numPages (streams)
+    final int totalObjs = 3 + 2 * numPages;
 
     final List<int> out = [];
     final List<int> offsets = List.filled(totalObjs + 1, 0); // 1-indexed
