@@ -409,6 +409,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   // Bouncing State
   bool _isBouncing = false;
   
+  // Auto Save State
+  Timer? _autoSaveTimer;
+  String _lastSavedState = "";
+  
   
   
 
@@ -417,6 +421,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
+    
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _saveMixState();
+    });
     
     _ticker = createTicker((elapsed) {
       if (!_isScrubbing && !_isScrubbingChords && _tracks.isNotEmpty && !SoLoud.instance.getPause(_tracks.first.handle)) {
@@ -1398,6 +1406,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           if (data['metronomePan'] != null) _metronomePan = (data['metronomePan'] as num).toDouble();
           if (data['subdivision'] != null) _subdivision = (data['subdivision'] as num).toDouble();
           if (data['isMetronomeOn'] != null) _isMetronomeOn = data['isMetronomeOn'] as bool;
+          if (data['countInClicks'] != null) _countInClicks = data['countInClicks'] as int;
         } catch (_) {}
       }
 
@@ -1968,6 +1977,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
+    _autoSaveTimer?.cancel();
     _countInTimer?.cancel();
     for (var t in _tracks) {
       SoLoud.instance.stop(t.handle);
@@ -1994,6 +2004,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       'metronomePan': _metronomePan,
       'subdivision': _subdivision,
       'isMetronomeOn': _isMetronomeOn,
+      'countInClicks': _countInClicks,
       'volumes': <String, double>{},
       'pans': <String, double>{},
       'mutes': <String, bool>{},
@@ -2007,9 +2018,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       data['solos'][t.name] = t.isSoloed;
     }
     
+    String jsonStr = jsonEncode(data);
+    if (jsonStr == _lastSavedState) return;
+    _lastSavedState = jsonStr;
+    
     try {
       final file = File('${_loadedSongDir!.path}/mix_state.json');
-      file.writeAsStringSync(jsonEncode(data));
+      file.writeAsStringSync(jsonStr);
     } catch (_) {}
   }
 
