@@ -503,7 +503,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                 leading: const Icon(Icons.onetwothree, color: Colors.tealAccent),
-                title: const Text('Count In Options', style: TextStyle(color: Colors.tealAccent)),
+                title: const Text('Count In', style: TextStyle(color: Colors.tealAccent)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showCountInMenu();
