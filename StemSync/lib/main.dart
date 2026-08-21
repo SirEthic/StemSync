@@ -435,8 +435,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
          double diff = actualPos - current;
          
          if (diff.abs() > 0.5) { 
-             // Hard snap only on manual seeking jumps (> 500ms)
+             // Hard snap only on manual seeking jumps (> 500ms) or native wrap-around
              _currentPositionNotifier.value = actualPos;
+             
+             // Detect native wrap-around (song finished and looped back to start natively)
+             if (diff < -5.0 && current > _songLength / 2) {
+                 if (!_isSongLooping) {
+                     for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
+                     for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
+                     _updateActiveChord(0.0);
+                     _updateActiveSection(0.0);
+                     setState(() {});
+                 }
+             }
          } else {
              // Exponential moving average: lerps 20% toward true audio clock per frame.
              // At 60fps, this flawlessly smooths out AAudio buffer chunking jitter.
@@ -447,15 +458,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
          _updateActiveChord(pos);
          _updateActiveSection(pos);
          _updateActiveLyric(pos);
-         
-         if (pos >= _songLength - 0.05) {
-             for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
-             for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
-             _currentPositionNotifier.value = 0.0;
-             _updateActiveChord(0.0);
-             _updateActiveSection(0.0);
-             setState(() {});
-         }
       }
     });
     _ticker.start();
@@ -521,24 +523,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       onChanged: (val) {
                         setModalState(() { _isSongLooping = val; });
                         setState(() { _isSongLooping = val; });
-                        for (var t in _tracks) {
-                          SoLoud.instance.setLooping(t.handle, val);
-                        }
-                        for (var t in _metronomeTracks.values) {
-                          SoLoud.instance.setLooping(t.handle, val);
-                        }
+                        
                       },
                     ),
                     onTap: () {
                       bool val = !_isSongLooping;
                       setModalState(() { _isSongLooping = val; });
                       setState(() { _isSongLooping = val; });
-                      for (var t in _tracks) {
-                        SoLoud.instance.setLooping(t.handle, val);
-                      }
-                      for (var t in _metronomeTracks.values) {
-                        SoLoud.instance.setLooping(t.handle, val);
-                      }
+                      
                     },
                   );
                 }
@@ -1475,8 +1467,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         bool isMetronome = filename.toLowerCase().contains('metronome');
         
         final handle = isMetronome
-            ? SoLoud.instance.play(source, paused: true, looping: _isSongLooping)
-            : _stemsBus!.play(source, paused: true, looping: _isSongLooping);
+            ? SoLoud.instance.play(source, paused: true, looping: true)
+            : _stemsBus!.play(source, paused: true, looping: true);
             
         SoLoud.instance.setProtectVoice(handle, true);
         
