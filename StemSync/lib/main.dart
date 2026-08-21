@@ -223,6 +223,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     );
   }
   
+  void _showLibrarySongOptions(Directory dir, String dirName) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.playlist_add, color: Colors.tealAccent),
+                title: const Text('Add to Setlist', style: TextStyle(color: Colors.tealAccent)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _addToPlaylist(dirName);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Delete Song', style: TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteSong(dir);
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   void _addToPlaylist(String dirName) {
     if (_playlists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Create a setlist first!")));
@@ -1918,18 +1954,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             leading: leadingWidget,
                             title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                            trailing: PopupMenuButton<String>(
+                            trailing: IconButton(
                               icon: const Icon(Icons.more_vert, color: Colors.grey),
-                              onSelected: (val) {
-                                if (val == 'add') _addToPlaylist(dir.path.split(Platform.pathSeparator).last);
-                                if (val == 'delete') _deleteSong(dir);
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(value: 'add', child: Text("Add to Setlist")),
-                                const PopupMenuItem(value: 'delete', child: Text("Delete Song", style: TextStyle(color: Colors.red))),
-                              ],
+                              onPressed: () => _showLibrarySongOptions(dir, dir.path.split(Platform.pathSeparator).last),
                             ),
                             onTap: () => _openSong(dir),
+                            onLongPress: () => _showLibrarySongOptions(dir, dir.path.split(Platform.pathSeparator).last),
                           );
                         },
                       ),
