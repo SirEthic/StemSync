@@ -446,6 +446,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                      _updateActiveChord(0.0);
                      _updateActiveSection(0.0);
                      setState(() {});
+                     _playNextSong(autoPlay: true);
                  }
              }
          } else {
@@ -516,7 +517,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   return ListTile(
                     contentPadding: const EdgeInsets.only(left: 32, right: 24),
                     leading: Icon(_isSongLooping ? Icons.repeat : Icons.repeat_one, color: Colors.orangeAccent),
-                    title: Text(_isSongLooping ? 'Looping Song' : 'Play Once', style: const TextStyle(color: Colors.orangeAccent)),
+                    title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.orangeAccent)),
                     trailing: Switch(
                       value: _isSongLooping,
                       activeColor: Colors.orangeAccent,
@@ -1277,7 +1278,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
 
-  void _playNextSong() {
+  void _playNextSong({bool autoPlay = false}) {
     Directory? nextDir;
     if (_activePlaylist != null) {
       final list = _playlists[_activePlaylist!]!;
@@ -1298,7 +1299,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
     if (nextDir != null) {
       _closeMixer();
-      _openSong(nextDir);
+      _openSong(nextDir, autoPlay: autoPlay);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("End of list")));
     }
@@ -1331,7 +1332,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
 
-  Future<void> _openSong(Directory targetDir) async {
+  Future<void> _openSong(Directory targetDir, {bool autoPlay = false}) async {
     try {
       if (_loadedSongDir?.path == targetDir.path && _tracks.isNotEmpty) {
         setState(() {
@@ -1507,6 +1508,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
       _updateTrackVolumes();
       setState(() { _isLoading = false; });
+      
+      if (autoPlay) {
+        for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
+        for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
+      }
 
     } catch (e) {
       setState(() { _isLoading = false; });
