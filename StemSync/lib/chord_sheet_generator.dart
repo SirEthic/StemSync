@@ -37,10 +37,9 @@ class ChordSheetGenerator {
     final safeName = title
         .replaceAll(RegExp(r'[^\w\s\-]'), '')
         .replaceAll(RegExp(r'\s+'), '_')
-        .toLowerCase()
-        .take(40)
-        .join();
-    final file = File('${dir.path}/${safeName}_chord_sheet.pdf');
+        .toLowerCase();
+    final clipped = safeName.length > 40 ? safeName.substring(0, 40) : safeName;
+    final file = File('${dir.path}/${clipped}_chord_sheet.pdf');
     await file.writeAsBytes(bytes);
     return file;
   }
