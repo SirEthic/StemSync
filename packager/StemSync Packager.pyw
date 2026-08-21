@@ -588,8 +588,8 @@ if __name__ == "__main__":
     ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 10))
     ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card1, text="Original Track", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card1, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Optional (guarantees perfect Shazam match)").grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
+    ctk.CTkLabel(card1, text="Original Track (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkEntry(card1, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Improves Shazam accuracy").grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
     btn_orig = ctk.CTkButton(card1, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_orig)
     btn_orig.grid(row=3, column=2, padx=(0, 25), pady=(0, 20))
     
