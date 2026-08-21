@@ -49,7 +49,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
             
     artist_name = manual_artist.strip()
     if not artist_name:
-        print("Fingerprinting combined full-mix audio to identify Song and Artist (Shazam)...")
+        print("Fingerprinting audio to identify Song and Artist (Shazam)...")
         import asyncio
         from shazamio import Shazam
         import soundfile as sf
@@ -57,41 +57,64 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         import os
         
         try:
-            # Write a 15-second slice from the MIDDLE of the song to a temporary .wav
-            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
-            
-            # Calculate the middle of the song (seek to 1:00 where vocals usually are)
             total_duration = len(y) / sr
-            start_sec = min(60.0, total_duration / 3.0) 
-            start_sample = int(start_sec * sr)
-            end_sample = int((start_sec + 15.0) * sr)
+            # Try multiple 15-second slices to increase detection chance
+            test_points = [min(60.0, total_duration / 3.0), 30.0, 90.0]
             
-            # y is the sum of 4 stems, so its amplitude likely exceeds 1.0 (clipping!)
-            # We MUST normalize it before writing to a 16-bit PCM WAV file, 
-            # otherwise Shazam just hears distorted static noise.
-            y_slice = y[start_sample:end_sample]
-            y_norm = y_slice / np.max(np.abs(y_slice) + 1e-8)
+            # Find vocal stem as fallback
+            y_vocals = None
+            for file in audio_files:
+                if "vocal" in file.name.lower():
+                    y_vocals, _ = librosa.load(file, sr=sr)
+                    break
+                    
+            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
+            shazam = Shazam()
             
-            sf.write(temp_wav, y_norm, sr)
-            
-            async def recognize_mix():
-                shazam = Shazam()
-                return await shazam.recognize(temp_wav)
+            async def try_recognize(audio_data, start_sec):
+                start_sample = int(start_sec * sr)
+                end_sample = int(min(start_sec + 15.0, total_duration) * sr)
                 
-            out = asyncio.run(recognize_mix())
+                if start_sample >= len(audio_data): return None
+                
+                y_slice = audio_data[start_sample:end_sample]
+                if len(y_slice) == 0: return None
+                
+                y_norm = y_slice / np.max(np.abs(y_slice) + 1e-8)
+                sf.write(temp_wav, y_norm, sr)
+                
+                out = await shazam.recognize(temp_wav)
+                return out if 'track' in out else None
+
+            async def aggressive_shazam():
+                # 1. Try full mix at different timestamps
+                for point in test_points:
+                    print(f"  -> Trying full mix at {point}s...")
+                    res = await try_recognize(y, point)
+                    if res: return res
+                
+                # 2. If all mix tests fail, try the isolated vocals
+                if y_vocals is not None:
+                    for point in test_points:
+                        print(f"  -> Trying isolated vocals at {point}s...")
+                        res = await try_recognize(y_vocals, point)
+                        if res: return res
+                return None
+                
+            out = asyncio.run(aggressive_shazam())
             
             if os.path.exists(temp_wav):
                 try: os.unlink(temp_wav)
                 except: pass
                 
-            if 'track' in out:
+            if out and 'track' in out:
                 track = out['track']
                 title = track.get('title', song_name)
                 artist_name = track.get('subtitle', '')
                 print(f"Shazam detected: {title} by {artist_name}")
                 song_name = title
             else:
-                print("Shazam could not identify the song from the full mix.")
+                print("Shazam could not identify the song after multiple attempts.")
                 
         except Exception as e:
             print(f"Shazam fingerprinting failed: {e}")
