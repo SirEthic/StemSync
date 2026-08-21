@@ -233,29 +233,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           
           return AlertDialog(
             title: const Text("Add to Setlist"),
+            contentPadding: const EdgeInsets.only(top: 16),
             content: SizedBox(
               width: double.maxFinite,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      hintText: "Search setlists...",
-                      prefixIcon: Icon(Icons.search),
-                      isDense: true,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search setlists...",
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.black26,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          searchQuery = val;
+                        });
+                      },
                     ),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        searchQuery = val;
-                      });
-                    },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   Flexible(
                     child: ListView(
                       shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 16),
                       children: filteredKeys.map((pName) => ListTile(
-                        title: Text(pName),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                        title: Text(pName, style: const TextStyle(fontSize: 16)),
+                        trailing: const Icon(Icons.add_circle_outline, color: Colors.tealAccent),
                         onTap: () {
                           setState(() {
                             if (!_playlists[pName]!.contains(dirName)) {
