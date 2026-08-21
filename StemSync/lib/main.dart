@@ -249,22 +249,49 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.only(top: 32, left: 24, right: 24, bottom: 16),
+        contentPadding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+        title: Column(
+          children: [
+            const Icon(Icons.album_outlined, size: 48, color: Colors.tealAccent),
+            const SizedBox(height: 16),
+            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white)),
+            const SizedBox(height: 4),
+            Text(artist, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Artist: $artist"),
-            const SizedBox(height: 8),
-            Text("Key: $key"),
-            const SizedBox(height: 8),
-            Text("BPM: $bpm"),
-            const SizedBox(height: 8),
-            Text("Stem Tracks: $stemCount"),
-          ]
+            const Divider(color: Colors.white24, height: 32),
+            _buildDetailRow(Icons.music_note, "Key Signature", key),
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.speed, "Tempo (BPM)", bpm),
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.layers, "Available Stems", "\ tracks"),
+          ],
         ),
-        actions: [ TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Close", style: TextStyle(color: Colors.tealAccent))) ]
+        actionsPadding: const EdgeInsets.only(bottom: 16, right: 16),
+        actions: [ 
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Close", style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 16))
+          ) 
+        ]
       )
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white54, size: 20),
+        const SizedBox(width: 16),
+        Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 16))),
+        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+      ],
     );
   }
 
