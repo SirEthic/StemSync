@@ -1902,8 +1902,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       right: 24,
                       child: FloatingActionButton.extended(
                         onPressed: _createPlaylist,
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         icon: const Icon(Icons.add),
-                        label: const Text("New Setlist"),
+                        label: const Text("New Setlist", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                         backgroundColor: Colors.teal,
                         foregroundColor: Colors.white,
                       ),
@@ -1925,10 +1927,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         ),
         floatingActionButton: _libraryTabIndex == 0 ? FloatingActionButton.extended(
           onPressed: _loadZipFile,
-          icon: const Icon(Icons.folder_zip),
-          label: const Text("Load New .zip"),
-          backgroundColor: Colors.tealAccent,
-          foregroundColor: Colors.black,
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          icon: const Icon(Icons.library_add),
+          label: const Text("Import Song", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
         ) : null,
       );
     }
