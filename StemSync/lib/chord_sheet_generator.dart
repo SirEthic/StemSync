@@ -32,10 +32,15 @@ class ChordSheetGenerator {
     // 3. Serialise to PDF bytes
     final bytes = _serialisePdf(pages);
 
-    // 4. Write to temp file
+    // 4. Write to temp file — named after the song
     final dir = await getTemporaryDirectory();
-    final file = File(
-        '${dir.path}/chord_sheet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final safeName = title
+        .replaceAll(RegExp(r'[^\w\s\-]'), '')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .toLowerCase()
+        .take(40)
+        .join();
+    final file = File('${dir.path}/${safeName}_chord_sheet.pdf');
     await file.writeAsBytes(bytes);
     return file;
   }
@@ -72,7 +77,7 @@ class ChordSheetGenerator {
       final double start = (rawTime as num).toDouble();
       final int mi = (start / spm).floor();
       final double tim = start - mi * spm;
-      final int bi = (tim / spb).round().clamp(0, 3);
+      final int bi = (tim / spb).floor().clamp(0, 3);
 
       if (mi >= 0 && mi < totalMeasures && measures[mi][bi].isEmpty) {
         measures[mi][bi] = chord;
@@ -128,11 +133,10 @@ class ChordSheetGenerator {
 
       // ── Header ────────────────────────────────────────────────────────
       if (isFirst) {
-        // Title centred (approximate width = chars * size * 0.55)
         final double titleSize = 18.0;
         final double titleW = title.length * titleSize * 0.55;
         txt(title, (_pw - titleW) / 2, _margin + 16, titleSize);
-        txt('\u2669= ${tempoBpm.round()} BPM', _margin, _margin + 16, 10);
+        txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 16, 10);
       }
 
       // ── Rows ──────────────────────────────────────────────────────────
@@ -140,7 +144,7 @@ class ChordSheetGenerator {
 
       for (int r = row; r < lastRow; r++) {
         final double rowTop = topOfRows + (r - row) * _rowH;
-        final double staffTop = rowTop + 20; // 20 pt above staff for chord names
+        final double staffTop = rowTop + 24; // 24 pt above staff for chord names
 
         // 5 staff lines
         for (int li = 0; li < 5; li++) {
@@ -152,7 +156,7 @@ class ChordSheetGenerator {
         line(_margin, staffTop, _margin, staffTop + _staffH, 1.0);
         line(_pw - _margin, staffTop, _pw - _margin, staffTop + _staffH, 1.0);
 
-        // Measure number
+        // Measure number (small, left of row)
         final int firstMeas = r * _measPerRow;
         txt('${firstMeas + 1}', _margin - 18, staffTop + 5, 7);
 
@@ -163,7 +167,7 @@ class ChordSheetGenerator {
 
           final double mLeft = _margin + m * measW;
 
-          // Bar line (inner)
+          // Inner bar line
           if (m > 0) {
             line(mLeft, staffTop, mLeft, staffTop + _staffH, 0.8);
           }
@@ -171,14 +175,14 @@ class ChordSheetGenerator {
           // Beats
           for (int b = 0; b < 4; b++) {
             final double cx = mLeft + (b + 0.5) * beatW;
-            // Rhythm slash (diagonal line)
+            // Rhythm slash — diagonal from bottom-left to top-right
             line(cx - 5, staffTop + _staffH - 3, cx + 5, staffTop + 3, 1.8);
 
             final String chord = measures[mi][b];
             if (chord.isNotEmpty) {
-              // Chord name above slash
-              final double approxW = chord.length * 6.0;
-              txt(chord, cx - approxW / 2, staffTop - 4, 9);
+              // Centre chord name above the beat's slash, 14pt above staff top
+              final double approxW = chord.length * 5.5;
+              txt(chord, cx - approxW / 2, staffTop - 14, 9);
             }
           }
         }
