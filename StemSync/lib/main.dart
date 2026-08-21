@@ -301,8 +301,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.delete_outline, color: Colors.white),
-                title: const Text('Delete Song', style: TextStyle(color: Colors.white)),
+                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Delete Song', style: TextStyle(color: Colors.redAccent)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _deleteSong(dir);
@@ -552,7 +552,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                leading: const Icon(Icons.onetwothree, color: Colors.white),
+                leading: Icon(Icons.onetwothree, color: _countInClicks > 0 ? Colors.tealAccent : Colors.white),
                 title: const Text('Count In', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -987,7 +987,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         content: const Text("Are you sure you want to permanently delete this song and all its separated stems?", style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.white))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
         ],
       )
     ) ?? false;
@@ -2239,8 +2239,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                 ),
                                 ListTile(
                                   contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                                  leading: const Icon(Icons.remove_circle_outline, color: Colors.white),
-                                  title: const Text('Remove from Setlist', style: TextStyle(color: Colors.white)),
+                                  leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                  title: const Text('Remove from Setlist', style: TextStyle(color: Colors.redAccent)),
                                   onTap: () {
                                     Navigator.pop(ctx);
                                     setState(() {
