@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
+import 'chord_sheet_generator.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
@@ -631,6 +632,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.music_note, color: Colors.white),
+                title: const Text('Export Chord Sheet (Image)', style: TextStyle(color: Colors.white)),
+                subtitle: const Text("Generate and share a rhythm slash lead sheet", style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _exportChordSheet();
+                },
+              ),
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.audio_file, color: Colors.white),
                 title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.white)),
                 subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
@@ -750,6 +761,29 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
     setState(() => _isBouncing = false);
     await Share.shareXFiles([XFile(outZip)], text: 'Modified Stems');
+  }
+
+  Future<void> _exportChordSheet() async {
+    if (_chords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No chords found for this song.")));
+      return;
+    }
+    
+    setState(() { _isExporting = true; });
+    
+    try {
+      final title = _songMetadata != null ? (_songMetadata!['song_name'] ?? _activeSongDir!.path.split(Platform.pathSeparator).last) : "Chord Sheet";
+      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, _chords, _baseTempo);
+      
+      if (file != null) {
+        final xFile = XFile(file.path, mimeType: 'image/png');
+        await Share.shareXFiles([xFile], text: "$title - Chord Sheet");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error generating chord sheet: $e")));
+    } finally {
+      setState(() { _isExporting = false; });
+    }
   }
 
   Future<void> _exportMix() async {
