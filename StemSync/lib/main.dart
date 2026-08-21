@@ -1475,9 +1475,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _stemsBus!.filters.limiterFilter.activate(); // Prevent digital clipping from overlapping FFT windows
       // Pitch shift filter is activated lazily in _applyPitchAndTempo only when needed.
 
-      for (var audioFile in audioFiles) {
+      final sources = await Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path)));
+      for (int i = 0; i < audioFiles.length; i++) {
+        final audioFile = audioFiles[i];
         final filename = audioFile.path.split(Platform.pathSeparator).last;
-        final source = await SoLoud.instance.loadFile(audioFile.path);
+        final source = sources[i];
         
         bool isMetronome = filename.toLowerCase().contains('metronome');
         
