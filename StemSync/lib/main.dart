@@ -222,29 +222,58 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Create a setlist first!")));
       return;
     }
+    
+    String searchQuery = "";
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add to Setlist"),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: _playlists.keys.map((pName) => ListTile(
-              title: Text(pName),
-              onTap: () {
-                setState(() {
-                  if (!_playlists[pName]!.contains(dirName)) {
-                    _playlists[pName]!.add(dirName);
-                    _savePlaylists();
-                  }
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
-              },
-            )).toList(),
-          ),
-        ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filteredKeys = _playlists.keys.where((k) => k.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+          
+          return AlertDialog(
+            title: const Text("Add to Setlist"),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: "Search setlists...",
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                    onChanged: (val) {
+                      setDialogState(() {
+                        searchQuery = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: filteredKeys.map((pName) => ListTile(
+                        title: Text(pName),
+                        onTap: () {
+                          setState(() {
+                            if (!_playlists[pName]!.contains(dirName)) {
+                              _playlists[pName]!.add(dirName);
+                              _savePlaylists();
+                            }
+                          });
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
+                        },
+                      )).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       ),
     );
   }
