@@ -1291,9 +1291,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         } catch (_) {}
       }
     } else {
-      int idx = _savedSongs.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
-      if (idx != -1 && idx < _savedSongs.length - 1) {
-        nextDir = _savedSongs[idx + 1]['dir'];
+      var currentList = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+      if (_sortMode == 'A-Z') {
+        currentList.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
+      } else {
+        currentList.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
+      }
+      
+      int idx = currentList.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
+      if (idx != -1 && idx < currentList.length - 1) {
+        nextDir = currentList[idx + 1]['dir'];
       }
     }
     
@@ -1318,9 +1325,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         } catch (_) {}
       }
     } else {
-      int idx = _savedSongs.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
+      var currentList = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+      if (_sortMode == 'A-Z') {
+        currentList.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
+      } else {
+        currentList.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
+      }
+      
+      int idx = currentList.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
       if (idx > 0) {
-        prevDir = _savedSongs[idx - 1]['dir'];
+        prevDir = currentList[idx - 1]['dir'];
       }
     }
     
