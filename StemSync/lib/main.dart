@@ -632,16 +632,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.music_note, color: Colors.white),
-                title: const Text('Export Chord Sheet (PDF)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text("Generate and share a rhythm slash lead sheet as PDF", style: TextStyle(color: Colors.white70)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _exportChordSheet();
-                },
-              ),
-              ListTile(
-                contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.audio_file, color: Colors.white),
                 title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.white)),
                 subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
@@ -2960,6 +2950,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               _buildBottomToggleBtn(Icons.queue_music, _showChords, () {
                 setState(() => _showChords = !_showChords);
               }),
+              if (_chords.isNotEmpty) ...[
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _exportChordSheet,
+                  child: const Icon(Icons.picture_as_pdf, color: Colors.white54, size: 20),
+                ),
+              ],
               const SizedBox(width: 32),
               _buildBottomToggleBtn(Icons.view_carousel, _showSections, () {
                 final wasOff = !_showSections;
