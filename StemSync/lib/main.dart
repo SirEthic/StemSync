@@ -283,8 +283,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
-                title: const Text('View Song Details', style: TextStyle(color: Colors.blueAccent)),
+                  leading: const Icon(Icons.info_outline, color: Colors.white),
+                title: const Text('View Song Details', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showSongDetails(dir);
@@ -301,8 +301,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                title: const Text('Delete Song', style: TextStyle(color: Colors.redAccent)),
+                  leading: const Icon(Icons.delete_outline, color: Colors.white),
+                title: const Text('Delete Song', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _deleteSong(dir);
@@ -530,11 +530,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 builder: (context, setModalState) {
                   return ListTile(
                     contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                    leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.orangeAccent),
-                    title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.orangeAccent)),
+                    leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.white),
+                    title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.white)),
                     trailing: Switch(
                       value: _isSongLooping,
-                      activeColor: Colors.orangeAccent,
+                      activeColor: Colors.tealAccent,
                       onChanged: (val) {
                         setModalState(() { _isSongLooping = val; });
                         setState(() { _isSongLooping = val; });
@@ -561,8 +561,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                leading: const Icon(Icons.ios_share, color: Colors.blueAccent),
-                title: const Text('Export & Share', style: TextStyle(color: Colors.blueAccent)),
+                leading: const Icon(Icons.ios_share, color: Colors.white),
+                title: const Text('Export & Share', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showExportMenu();
@@ -590,8 +590,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.audio_file, color: Colors.blueAccent),
-                title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.blueAccent)),
+                  leading: const Icon(Icons.audio_file, color: Colors.white),
+                title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.white)),
                 subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -610,8 +610,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.folder_zip, color: Colors.orangeAccent),
-                title: const Text('Share Original Song (ZIP)', style: TextStyle(color: Colors.orangeAccent)),
+                  leading: const Icon(Icons.folder_zip, color: Colors.white),
+                title: const Text('Share Original Song (ZIP)', style: TextStyle(color: Colors.white)),
                 subtitle: const Text("Zip and share the original, unmodified song folder", style: TextStyle(color: Colors.white70)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -987,7 +987,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         content: const Text("Are you sure you want to permanently delete this song and all its separated stems?", style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.white))),
         ],
       )
     ) ?? false;
@@ -2239,8 +2239,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                 ),
                                 ListTile(
                                   contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                                  leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                  title: const Text('Remove from Setlist', style: TextStyle(color: Colors.redAccent)),
+                                  leading: const Icon(Icons.remove_circle_outline, color: Colors.white),
+                                  title: const Text('Remove from Setlist', style: TextStyle(color: Colors.white)),
                                   onTap: () {
                                     Navigator.pop(ctx);
                                     setState(() {
@@ -2455,13 +2455,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               if (_isBouncing)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: Colors.blueAccent.withValues(alpha: 0.2),
+                  color: Colors.tealAccent.withValues(alpha: 0.1),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.blueAccent, strokeWidth: 2)),
+                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
                       SizedBox(width: 12),
-                      Text("EXPORTING AUDIO...", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      Text("EXPORTING AUDIO...", style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                     ],
                   ),
                 ),
