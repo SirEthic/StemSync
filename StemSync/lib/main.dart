@@ -403,6 +403,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   // Count In State
   int _countInClicks = 0;
   Timer? _countInTimer;
+  final Stopwatch _countInStopwatch = Stopwatch();
   int _currentCountInTick = 0;
   AudioSource? _beepSource;
   bool _isSongLooping = true;
@@ -428,6 +429,26 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     });
     
     _ticker = createTicker((elapsed) {
+      if (_countInTimer != null && _countInTimer!.isActive) {
+           double interval = 60.0 / _currentTempo;
+           double elapsedSec = _countInStopwatch.elapsedMicroseconds / 1000000.0;
+           int expectedTick = (elapsedSec / interval).floor();
+           if (expectedTick > _currentCountInTick) {
+               _currentCountInTick = expectedTick;
+               if (_currentCountInTick >= _countInClicks) {
+                   _countInTimer!.cancel();
+                   _countInTimer = null;
+                   _countInStopwatch.stop();
+                   for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
+                   for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
+               } else {
+                   _playBeep();
+               }
+               setState(() {});
+           }
+           return; // Do not process normal playback time updates while counting in!
+      }
+
       if (!_isScrubbing && !_isScrubbingChords && _tracks.isNotEmpty && !SoLoud.instance.getPause(_tracks.first.handle)) {
          final actualPos = SoLoud.instance.getPosition(_tracks.first.handle).inMilliseconds / 1000.0;
          
@@ -917,24 +938,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _updateActiveChord(snappedPos);
         _updateActiveSection(snappedPos);
         _currentCountInTick = 0;
-        int intervalMs = (interval * 1000).toInt();
         setState(() {});
 
-        // Pre-fire first tick
-        _playBeep();
-        _countInTimer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
-          _currentCountInTick++;
-          if (_currentCountInTick >= _countInClicks) {
-            timer.cancel();
-            _countInTimer = null;
-            for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
-            for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
-            setState(() {});
-          } else {
-            _playBeep();
-            setState(() {});
-          }
-        });
+        // Use a dummy timer as a state flag, but drive the actual high-precision ticks from the 60fps Ticker
+        _countInTimer = Timer(const Duration(days: 99), () {});
+        _countInStopwatch.reset();
+        _countInStopwatch.start();
+        
+        _playBeep(); // Pre-fire first tick
       } else {
         for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
         for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
