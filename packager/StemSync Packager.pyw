@@ -469,10 +469,14 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     # Zip it all up
     print("Checking for lyrics...")
     
-    # Helper to find any .lrc file in the folder
+    # Helper to find any .lrc file in the folder (newest first)
     def find_lrc():
         lrc_files = list(stem_folder.glob("*.lrc"))
-        return lrc_files[0] if lrc_files else None
+        if not lrc_files:
+            return None
+        # Sort by most recently modified, so if they have multiple, we pick the one they just downloaded!
+        lrc_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        return lrc_files[0]
 
     lrc_path = find_lrc()
     
