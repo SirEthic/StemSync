@@ -2,18 +2,19 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 
-/// Generates a rhythm-slash chord lead sheet as a raw PDF file.
-/// No third-party pdf package needed — we write valid PDF 1.4 bytes directly.
+/// Generates a rhythm-slash chord lead sheet as a valid PDF 1.4 file.
+/// Pure Dart — no external package required.
 class ChordSheetGenerator {
-  // PDF page size: A4 in points (1 pt = 1/72 inch)
-  static const double _pageW = 595.28;
-  static const double _pageH = 841.89;
-  static const double _margin = 40;
-  static const int _measuresPerRow = 4;
-  static const double _staffLineSpacing = 6.0; // space between the 5 staff lines
-  static const double _staffHeight = _staffLineSpacing * 4; // total height of staff
-  static const double _rowHeight = 70.0; // vertical space per row of staves
+  // A4 page in PDF points (1 pt = 1/72 inch)
+  static const double _pw = 595.28;
+  static const double _ph = 841.89;
+  static const double _margin = 45.0;
+  static const int _measPerRow = 4;
+  static const double _rowH = 72.0; // vertical space per row
+  static const double _staffLineGap = 5.5; // gap between each of 5 staff lines
+  static const double _staffH = _staffLineGap * 4;
 
+  // ── Public entry-point ────────────────────────────────────────────────────
   static Future<File?> generateAndSaveChordSheet(
     String title,
     List<dynamic> chords,
@@ -21,9 +22,29 @@ class ChordSheetGenerator {
   ) async {
     if (chords.isEmpty) return null;
 
-    // ── 1. Quantise chords into measures ─────────────────────────────────────
-    final double secondsPerBeat = 60.0 / tempoBpm;
-    final double secondsPerMeasure = secondsPerBeat * 4;
+    // 1. Quantise chords into a measure/beat grid
+    final measures = _buildMeasures(chords, tempoBpm);
+    if (measures.isEmpty) return null;
+
+    // 2. Build one content-stream string per page
+    final pages = _buildPageStreams(title, tempoBpm, measures);
+
+    // 3. Serialise to PDF bytes
+    final bytes = _serialisePdf(pages);
+
+    // 4. Write to temp file
+    final dir = await getTemporaryDirectory();
+    final file = File(
+        '${dir.path}/chord_sheet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  // ── Step 1 – Quantise ─────────────────────────────────────────────────────
+  static List<List<String>> _buildMeasures(
+      List<dynamic> chords, double tempoBpm) {
+    final double spb = 60.0 / tempoBpm; // seconds per beat
+    final double spm = spb * 4; // seconds per measure
 
     double lastTime = 0;
     for (var c in chords) {
@@ -34,249 +55,232 @@ class ChordSheetGenerator {
       }
     }
 
-    int totalMeasures = (lastTime / secondsPerMeasure).ceil() + 1;
+    int totalMeasures = (lastTime / spm).ceil() + 1;
     if (totalMeasures < 1) totalMeasures = 1;
 
-    // Each measure holds 4 beat-slots
-    final List<List<String>> measures =
-        List.generate(totalMeasures, (_) => ['', '', '', '']);
+    final measures =
+        List.generate(totalMeasures, (_) => List.filled(4, '', growable: false));
 
     for (var c in chords) {
       final rawTime = c['time'];
       final rawChord = c['chord'];
       if (rawTime == null || rawChord == null) continue;
 
+      final String chord = rawChord.toString().trim();
+      if (chord.isEmpty || chord == 'N' || chord == 'N/C') continue;
+
       final double start = (rawTime as num).toDouble();
-      final String chordName = rawChord.toString().trim();
-      if (chordName.isEmpty || chordName == 'N' || chordName == 'N/C') continue;
+      final int mi = (start / spm).floor();
+      final double tim = start - mi * spm;
+      final int bi = (tim / spb).round().clamp(0, 3);
 
-      final int measureIndex = (start / secondsPerMeasure).floor();
-      final double timeInMeasure = start - measureIndex * secondsPerMeasure;
-      final int beatIndex =
-          (timeInMeasure / secondsPerBeat).round().clamp(0, 3);
-
-      if (measureIndex >= 0 && measureIndex < measures.length) {
-        // Only write chord if the slot is empty (first chord wins per beat)
-        if (measures[measureIndex][beatIndex].isEmpty) {
-          measures[measureIndex][beatIndex] = chordName;
-        }
+      if (mi >= 0 && mi < totalMeasures && measures[mi][bi].isEmpty) {
+        measures[mi][bi] = chord;
       }
     }
 
-    // ── 2. Build PDF pages ────────────────────────────────────────────────────
-    final double usableW = _pageW - _margin * 2;
-    final double measureW = usableW / _measuresPerRow;
-    final double beatW = measureW / 4;
+    return measures;
+  }
 
-    // How many rows fit on one page?
-    // Reserve top of first page for title + tempo header (~60 pt)
-    const double headerHeight = 60.0;
-    final int rowsPerPage =
-        ((_pageH - _margin * 2 - headerHeight) / _rowHeight).floor();
+  // ── Step 2 – Build page content streams ───────────────────────────────────
+  static List<String> _buildPageStreams(
+      String title, double tempoBpm, List<List<String>> measures) {
+    final double usableW = _pw - _margin * 2;
+    final double measW = usableW / _measPerRow;
+    final double beatW = measW / 4;
+    final int totalRows = (measures.length / _measPerRow).ceil();
 
-    final int totalRows = (totalMeasures / _measuresPerRow).ceil();
-    final int totalPages = (totalRows / rowsPerPage).ceil().clamp(1, 999);
+    // First page has a header; subsequent pages start right away
+    const double headerH = 52.0;
+    final int rowsFirstPage =
+        ((_ph - _margin * 2 - headerH) / _rowH).floor().clamp(1, 9999);
+    final int rowsOtherPage =
+        ((_ph - _margin * 2) / _rowH).floor().clamp(1, 9999);
 
-    // ── 3. Emit raw PDF ───────────────────────────────────────────────────────
-    final buf = StringBuffer();
+    final List<String> pageStreams = [];
+    int row = 0;
 
-    // We collect object byte-offsets for the xref table
-    final List<int> offsets = [];
-    final rawBytes = <int>[];
+    while (row < totalRows) {
+      final bool isFirst = pageStreams.isEmpty;
+      final int rowsThisPage = isFirst ? rowsFirstPage : rowsOtherPage;
+      final int lastRow = (row + rowsThisPage).clamp(0, totalRows);
 
-    void emit(String s) {
-      rawBytes.addAll(s.codeUnits);
-    }
-
-    void emitLn(String s) => emit('$s\n');
-
-    // Helper: record offset and start an object
-    void startObj(int n) {
-      offsets.add(rawBytes.length);
-      emitLn('$n 0 obj');
-    }
-
-    void endObj() => emitLn('endobj\n');
-
-    // ── Header ─────────────────────────────────────────────────────────────
-    emit('%PDF-1.4\n');
-
-    // Object 1 – Catalog
-    startObj(1);
-    emitLn('<< /Type /Catalog /Pages 2 0 R >>');
-    endObj();
-
-    // Object 2 – Pages (kids filled after we know page object IDs)
-    // We'll patch this later; for now, reserve the slot
-    final int pagesObjOffset = rawBytes.length;
-    offsets.add(rawBytes.length); // will be overwritten
-    // placeholder – we overwrite offsets[1] after writing all pages
-    // Actually, build the pages content string
-    // Strategy: write pages first as a forward-ref-free approach.
-    // PDF allows forward references so this is fine.
-
-    // Object 2 – Pages dictionary placeholder
-    startObj(2);
-    final pageKids =
-        List.generate(totalPages, (i) => '${3 + i} 0 R').join(' ');
-    emitLn('<< /Type /Pages /Kids [$pageKids] /Count $totalPages >>');
-    endObj();
-
-    // Helvetica font (built-in, no embedding needed)
-    // Object 3+totalPages = Font
-    final int fontObjId = 3 + totalPages;
-    // Write page content objects first (ids 3..3+totalPages-1)
-    final List<int> pageContentIds = [];
-    final int contentStartId = 3 + totalPages + 1;
-
-    // ── Write Page objects (3..3+totalPages-1) ───────────────────────────
-    for (int pg = 0; pg < totalPages; pg++) {
-      startObj(3 + pg);
-      emitLn(
-          '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${_pageW.toStringAsFixed(2)} ${_pageH.toStringAsFixed(2)}]');
-      emitLn(
-          '   /Resources << /Font << /F1 $fontObjId 0 R >> >> /Contents ${contentStartId + pg} 0 R >>');
-      endObj();
-      pageContentIds.add(contentStartId + pg);
-    }
-
-    // ── Font object ──────────────────────────────────────────────────────
-    startObj(fontObjId);
-    emitLn(
-        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-    endObj();
-
-    // ── Content streams (one per page) ───────────────────────────────────
-    for (int pg = 0; pg < totalPages; pg++) {
       final sb = StringBuffer();
 
-      // PDF graphics: origin is bottom-left, Y increases upward
-      // We work in top-down coordinates and flip at emit time
-      double flip(double y) => _pageH - y;
+      // PDF Y is bottom-up; helper flips our top-down coords
+      double y(double topDown) => _ph - topDown;
 
-      void line(double x1, double y1, double x2, double y2) {
-        sb.writeln(
-            '${x1.toStringAsFixed(2)} ${flip(y1).toStringAsFixed(2)} m ${x2.toStringAsFixed(2)} ${flip(y2).toStringAsFixed(2)} l S');
+      void line(double x1, double td1, double x2, double td2, double w) {
+        sb.write('$w w '
+            '${f(x1)} ${f(y(td1))} m '
+            '${f(x2)} ${f(y(td2))} l S\n');
       }
 
-      void text(String t, double x, double y, double size) {
-        // Escape parentheses
-        final escaped = t.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
-        sb.writeln('BT /F1 ${size.toStringAsFixed(1)} Tf ${x.toStringAsFixed(2)} ${flip(y).toStringAsFixed(2)} Td ($escaped) Tj ET');
+      // Text in a single call (BT…ET block)
+      void txt(String t, double x, double tdY, double size) {
+        final esc = t
+            .replaceAll('\\', '\\\\')
+            .replaceAll('(', '\\(')
+            .replaceAll(')', '\\)');
+        sb.write(
+            'BT /F1 ${f(size)} Tf ${f(x)} ${f(y(tdY))} Td ($esc) Tj ET\n');
       }
 
-      // Set line width
-      sb.writeln('0.8 w');
-
-      double yOffset = _margin;
-
-      // ── Header (first page only) ──────────────────────────────────────
-      if (pg == 0) {
-        // Title centred
-        final titleSize = 20.0;
-        final approxTitleW = title.length * titleSize * 0.55;
-        text(title, (_pageW - approxTitleW) / 2, yOffset + 18, titleSize);
-        // Tempo left
-        text('♩= ${tempoBpm.round()} BPM', _margin, yOffset + 18, 11);
-        yOffset += headerHeight;
+      // ── Header ────────────────────────────────────────────────────────
+      if (isFirst) {
+        // Title centred (approximate width = chars * size * 0.55)
+        final double titleSize = 18.0;
+        final double titleW = title.length * titleSize * 0.55;
+        txt(title, (_pw - titleW) / 2, _margin + 16, titleSize);
+        txt('\u2669= ${tempoBpm.round()} BPM', _margin, _margin + 16, 10);
       }
 
-      // ── Draw rows for this page ───────────────────────────────────────
-      final int firstRow = pg == 0
-          ? 0
-          : (rowsPerPage - ((pg == 1 && pg > 0) ? 0 : 0)) +
-              (pg - 1) * rowsPerPage +
-              rowsPerPage;
-      // simpler: first row on this page
-      final int pageFirstRow = pg == 0 ? 0 : rowsPerPage + (pg - 1) * rowsPerPage;
-      final int pageLastRow = (pageFirstRow + rowsPerPage).clamp(0, totalRows);
+      // ── Rows ──────────────────────────────────────────────────────────
+      final double topOfRows = isFirst ? _margin + headerH : _margin;
 
-      for (int row = pageFirstRow; row < pageLastRow; row++) {
-        final double rowTop = yOffset + (row - pageFirstRow) * _rowHeight + 25;
-        // Staff top = rowTop + chord text space (20pt)
-        final double staffTop = rowTop + 20;
+      for (int r = row; r < lastRow; r++) {
+        final double rowTop = topOfRows + (r - row) * _rowH;
+        final double staffTop = rowTop + 20; // 20 pt above staff for chord names
 
-        // Draw 5 staff lines across full usable width
+        // 5 staff lines
         for (int li = 0; li < 5; li++) {
-          final double ly = staffTop + li * _staffLineSpacing;
-          line(_margin, ly, _pageW - _margin, ly);
+          final double ly = staffTop + li * _staffLineGap;
+          line(_margin, ly, _pw - _margin, ly, 0.5);
         }
 
-        // Left & right bar lines spanning the staff
-        line(_margin, staffTop, _margin, staffTop + _staffHeight);
-        line(_pageW - _margin, staffTop, _pageW - _margin, staffTop + _staffHeight);
+        // Outer bar lines
+        line(_margin, staffTop, _margin, staffTop + _staffH, 1.0);
+        line(_pw - _margin, staffTop, _pw - _margin, staffTop + _staffH, 1.0);
 
-        // Measure number (left of row, small)
-        final int firstMeasure = row * _measuresPerRow;
-        text('${firstMeasure + 1}', _margin - 20, staffTop + 2, 7);
+        // Measure number
+        final int firstMeas = r * _measPerRow;
+        txt('${firstMeas + 1}', _margin - 18, staffTop + 5, 7);
 
-        // Measures in this row
-        for (int m = 0; m < _measuresPerRow; m++) {
-          final int mIndex = row * _measuresPerRow + m;
-          if (mIndex >= measures.length) break;
+        // Measures
+        for (int m = 0; m < _measPerRow; m++) {
+          final int mi = r * _measPerRow + m;
+          if (mi >= measures.length) break;
 
-          final double mLeft = _margin + m * measureW;
+          final double mLeft = _margin + m * measW;
 
-          // Bar line between measures
+          // Bar line (inner)
           if (m > 0) {
-            line(mLeft, staffTop, mLeft, staffTop + _staffHeight);
+            line(mLeft, staffTop, mLeft, staffTop + _staffH, 0.8);
           }
 
-          // 4 beat slots
+          // Beats
           for (int b = 0; b < 4; b++) {
-            final double slashCx = mLeft + (b + 0.5) * beatW;
-            final double slashTop = staffTop + 2;
-            final double slashBot = staffTop + _staffHeight - 2;
+            final double cx = mLeft + (b + 0.5) * beatW;
+            // Rhythm slash (diagonal line)
+            line(cx - 5, staffTop + _staffH - 3, cx + 5, staffTop + 3, 1.8);
 
-            // Slightly thicker slash stroke
-            sb.writeln('1.5 w');
-            line(slashCx - 4, slashBot, slashCx + 4, slashTop);
-            sb.writeln('0.8 w');
-
-            final String chord = measures[mIndex][b];
+            final String chord = measures[mi][b];
             if (chord.isNotEmpty) {
-              // Position chord name above the staff
-              text(chord, slashCx - (chord.length * 3.5), staffTop - 13, 10);
+              // Chord name above slash
+              final double approxW = chord.length * 6.0;
+              txt(chord, cx - approxW / 2, staffTop - 4, 9);
             }
           }
         }
       }
 
-      final streamContent = sb.toString();
-      startObj(contentStartId + pg);
-      emitLn('<< /Length ${streamContent.length} >>');
-      emitLn('stream');
-      emit(streamContent);
-      emitLn('endstream');
+      pageStreams.add(sb.toString());
+      row = lastRow;
+    }
+
+    return pageStreams;
+  }
+
+  // ── Step 3 – Serialise to raw PDF bytes ───────────────────────────────────
+  static Uint8List _serialisePdf(List<String> pageStreams) {
+    final int numPages = pageStreams.length;
+
+    // Object layout:
+    //  1 = Catalog
+    //  2 = Pages
+    //  3 = Font
+    //  4..4+numPages-1 = Page objects
+    //  4+numPages..4+2*numPages-1 = Content streams
+    final int firstPageObj = 4;
+    final int firstContentObj = 4 + numPages;
+    final int totalObjs = 4 + 2 * numPages; // objects 1..totalObjs
+
+    final List<int> out = [];
+    final List<int> offsets = List.filled(totalObjs + 1, 0); // 1-indexed
+
+    void w(String s) => out.addAll(s.codeUnits);
+    void wl(String s) => w('$s\n');
+
+    void beginObj(int id) {
+      offsets[id] = out.length;
+      wl('$id 0 obj');
+    }
+
+    void endObj() => wl('endobj\n');
+
+    // Header
+    wl('%PDF-1.4');
+
+    // Object 1 – Catalog
+    beginObj(1);
+    wl('<< /Type /Catalog /Pages 2 0 R >>');
+    endObj();
+
+    // Object 2 – Pages
+    beginObj(2);
+    final kids =
+        List.generate(numPages, (i) => '${firstPageObj + i} 0 R').join(' ');
+    wl('<< /Type /Pages /Kids [$kids] /Count $numPages >>');
+    endObj();
+
+    // Object 3 – Font
+    beginObj(3);
+    wl('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold '
+        '/Encoding /WinAnsiEncoding >>');
+    endObj();
+
+    // Page objects
+    for (int i = 0; i < numPages; i++) {
+      final int pageId = firstPageObj + i;
+      final int contentId = firstContentObj + i;
+      beginObj(pageId);
+      wl('<< /Type /Page /Parent 2 0 R');
+      wl('   /MediaBox [0 0 ${f(_pw)} ${f(_ph)}]');
+      wl('   /Resources << /Font << /F1 3 0 R >> >>');
+      wl('   /Contents $contentId 0 R >>');
       endObj();
     }
 
-    // ── xref table ───────────────────────────────────────────────────────
-    final int xrefOffset = rawBytes.length;
-    final int totalObjs = contentStartId + totalPages; // 0-based count
-    emitLn('xref');
-    emitLn('0 ${totalObjs + 1}');
-    emitLn('0000000000 65535 f ');
-
-    // offsets list: index 0 = obj1, index 1 = obj2, etc.
-    for (int i = 0; i < totalObjs; i++) {
-      if (i < offsets.length) {
-        emitLn(offsets[i].toString().padLeft(10, '0') + ' 00000 n ');
-      } else {
-        emitLn('0000000000 00000 n ');
-      }
+    // Content stream objects
+    for (int i = 0; i < numPages; i++) {
+      final int contentId = firstContentObj + i;
+      final String stream = pageStreams[i];
+      beginObj(contentId);
+      wl('<< /Length ${stream.length} >>');
+      wl('stream');
+      w(stream);
+      wl('endstream');
+      endObj();
     }
 
-    emitLn('trailer');
-    emitLn('<< /Size ${totalObjs + 1} /Root 1 0 R >>');
-    emitLn('startxref');
-    emitLn('$xrefOffset');
-    emit('%%EOF');
+    // xref
+    final int xrefOffset = out.length;
+    wl('xref');
+    wl('0 ${totalObjs + 1}');
+    wl('0000000000 65535 f ');
+    for (int id = 1; id <= totalObjs; id++) {
+      wl(offsets[id].toString().padLeft(10, '0') + ' 00000 n ');
+    }
 
-    final tempDir = await getTemporaryDirectory();
-    final file = File(
-        '${tempDir.path}/chord_sheet_${DateTime.now().millisecondsSinceEpoch}.pdf');
-    await file.writeAsBytes(Uint8List.fromList(rawBytes));
-    return file;
+    // Trailer
+    wl('trailer');
+    wl('<< /Size ${totalObjs + 1} /Root 1 0 R >>');
+    wl('startxref');
+    wl('$xrefOffset');
+    w('%%EOF');
+
+    return Uint8List.fromList(out);
   }
+
+  static String f(double v) => v.toStringAsFixed(2);
 }
