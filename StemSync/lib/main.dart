@@ -610,6 +610,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   _showExportMenu();
                 },
               ),
+              if (_chords.isNotEmpty)
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                leading: const Icon(Icons.library_music, color: Colors.white),
+                title: const Text('Chord Sheet', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Export a rhythm slash lead sheet as PDF', style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _exportChordSheet();
+                },
+              ),
             ],
           ),
         );
@@ -2950,13 +2961,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               _buildBottomToggleBtn(Icons.queue_music, _showChords, () {
                 setState(() => _showChords = !_showChords);
               }),
-              if (_chords.isNotEmpty) ...[
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: _exportChordSheet,
-                  child: const Icon(Icons.picture_as_pdf, color: Colors.white54, size: 20),
-                ),
-              ],
               const SizedBox(width: 32),
               _buildBottomToggleBtn(Icons.view_carousel, _showSections, () {
                 final wasOff = !_showSections;
