@@ -149,10 +149,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   final ScrollController _sectionScrollController = ScrollController();
 
   // Library State
-  List<Directory> _savedSongs = [];
+  List<Map<String, dynamic>> _savedSongs = [];
   bool _isLibraryLoading = true;
   Directory? _activeSongDir; // Used for UI state (null = library view)
   Directory? _loadedSongDir; // Used to track what is currently loaded in memory
+  
+  String _searchQuery = "";
+  String _sortMode = "Newest Added";
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> _chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -521,8 +525,44 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     if (!songsDir.existsSync()) {
       songsDir.createSync(recursive: true);
     }
+    
+    List<Map<String, dynamic>> loaded = [];
+    for (var dir in songsDir.listSync().whereType<Directory>()) {
+      String title = dir.path.split(Platform.pathSeparator).last;
+      String subtitle = "";
+      int timestamp = dir.statSync().modified.millisecondsSinceEpoch;
+      
+      final metaFile = File('${dir.path}/song_metadata.json');
+      if (metaFile.existsSync()) {
+        try {
+          final meta = jsonDecode(metaFile.readAsStringSync());
+          title = meta['song_name'] ?? title;
+          
+          List<String> details = [];
+          if (meta['artist'] != null && meta['artist'].toString().trim().isNotEmpty && meta['artist'].toString().trim() != "Unknown Artist") {
+            details.add(meta['artist'].toString());
+          }
+          if (meta['genre'] != null && meta['genre'].toString().trim().isNotEmpty && meta['genre'].toString().trim() != "Unknown Genre") {
+            details.add(meta['genre'].toString());
+          }
+          if (meta['release_year'] != null && meta['release_year'].toString().trim().isNotEmpty) {
+            details.add(meta['release_year'].toString());
+          }
+          subtitle = details.join(' • ');
+        } catch (_) {}
+      }
+      
+      loaded.add({
+        'dir': dir,
+        'title': title,
+        'subtitle': subtitle,
+        'searchKey': '${title.toLowerCase()} ${subtitle.toLowerCase()} ${dir.path.toLowerCase()}',
+        'timestamp': timestamp,
+      });
+    }
+
     setState(() {
-      _savedSongs = songsDir.listSync().whereType<Directory>().toList();
+      _savedSongs = loaded;
       _isLibraryLoading = false;
     });
   }
@@ -1521,63 +1561,103 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
     if (_activeSongDir == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("StemSync Library", style: TextStyle(fontWeight: FontWeight.bold))),
+        appBar: AppBar(
+          title: _activeSongDir == null 
+            ? TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: "Search songs, artists, genres...",
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                  prefixIcon: const Icon(Icons.search, color: Colors.white),
+                  suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.white),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() { _searchQuery = ""; });
+                        },
+                      )
+                    : null,
+                ),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                onChanged: (val) {
+                  setState(() { _searchQuery = val.toLowerCase(); });
+                },
+              )
+            : const Text("StemSync Library", style: TextStyle(fontWeight: FontWeight.bold)),
+          actions: _activeSongDir == null ? [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.sort),
+              onSelected: (String result) {
+                setState(() { _sortMode = result; });
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'Newest Added',
+                  child: Text('Newest Added'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'A-Z',
+                  child: Text('A-Z'),
+                ),
+              ],
+            ),
+          ] : null,
+        ),
         body: _isLibraryLoading 
           ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-          : _savedSongs.isEmpty 
-            ? const Center(child: Text("No songs loaded.\nTap the button below to load a .zip!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
-            : ListView.builder(
-                itemCount: _savedSongs.length,
-                itemBuilder: (context, index) {
-                  final dir = _savedSongs[index];
-                  String name = dir.path.split(Platform.pathSeparator).last;
-                  String subtitleText = "";
-                  final metaFile = File('${dir.path}/song_metadata.json');
-                  if (metaFile.existsSync()) {
-                    try {
-                      final meta = jsonDecode(metaFile.readAsStringSync());
-                      name = meta['song_name'] ?? name;
-                      
-                      List<String> details = [];
-                      if (meta['artist'] != null && meta['artist'].toString().trim().isNotEmpty && meta['artist'].toString().trim() != "Unknown Artist") {
-                        details.add(meta['artist'].toString());
-                      }
-                      if (meta['genre'] != null && meta['genre'].toString().trim().isNotEmpty && meta['genre'].toString().trim() != "Unknown Genre") {
-                        details.add(meta['genre'].toString());
-                      }
-                      if (meta['release_year'] != null && meta['release_year'].toString().trim().isNotEmpty) {
-                        details.add(meta['release_year'].toString());
-                      }
-                      subtitleText = details.join(' • ');
-                    } catch (_) {}
-                  }
-                  
-                  final coverFile = File('${dir.path}/cover.jpg');
-                  Widget leadingWidget = coverFile.existsSync()
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(coverFile, width: 50, height: 50, fit: BoxFit.cover),
-                        )
-                      : const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white));
+          : Builder(
+              builder: (context) {
+                if (_savedSongs.isEmpty) {
+                  return const Center(child: Text("No songs loaded.\nTap the button below to load a .zip!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)));
+                }
+                
+                var filtered = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+                if (_sortMode == 'A-Z') {
+                  filtered.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
+                } else {
+                  filtered.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
+                }
+                
+                if (filtered.isEmpty) {
+                  return const Center(child: Text("No songs match your search.", style: TextStyle(color: Colors.grey)));
+                }
+                
+                return ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final songData = filtered[index];
+                    final dir = songData['dir'] as Directory;
+                    final name = songData['title'] as String;
+                    final subtitleText = songData['subtitle'] as String;
+                    
+                    final coverFile = File('${dir.path}/cover.jpg');
+                    Widget leadingWidget = coverFile.existsSync()
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(coverFile, width: 50, height: 50, fit: BoxFit.cover),
+                          )
+                        : const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white));
 
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    leading: leadingWidget,
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.grey),
-                          onPressed: () => _deleteSong(dir),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                    onTap: () => _openSong(dir),
-                  );
-                },
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      leading: leadingWidget,
+                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.grey),
+                            onPressed: () => _deleteSong(dir),
+                          ),
+                          const Icon(Icons.chevron_right, color: Colors.grey),
+                        ],
+                      ),
+                      onTap: () => _openSong(dir),
+                    );
+                  },
               ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _loadZipFile,
