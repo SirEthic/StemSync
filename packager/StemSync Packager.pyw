@@ -468,9 +468,16 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     # Zip it all up
     print("Checking for lyrics...")
-    lrc_path = stem_folder / "lyrics.lrc"
-    if lrc_path.exists():
-        print("Found existing 'lyrics.lrc' file in folder. Skipping download!")
+    
+    # Helper to find any .lrc file in the folder
+    def find_lrc():
+        lrc_files = list(stem_folder.glob("*.lrc"))
+        return lrc_files[0] if lrc_files else None
+
+    lrc_path = find_lrc()
+    
+    if lrc_path:
+        print(f"Found existing lyrics file '{lrc_path.name}'. Skipping download!")
     else:
         print("Downloading lyrics...")
         try:
@@ -478,6 +485,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
             search_query = f"{song_name} {artist_name}".strip()
             lrc_content = syncedlyrics.search(search_query)
             if lrc_content:
+                lrc_path = stem_folder / "lyrics.lrc"
                 with open(lrc_path, "w", encoding="utf-8") as f:
                     f.write(lrc_content)
                 print("Successfully downloaded synced lyrics (.lrc)!")
@@ -500,13 +508,14 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 
                 messagebox.showinfo(
                     "Waiting for Lyrics...", 
-                    f"1. Download the correct .lrc file from the website.\n2. Rename it to exactly 'lyrics.lrc'.\n3. Place it inside your Stems folder:\n{stem_folder}\n\nClick OK *ONLY AFTER* you have placed the file in the folder to resume packaging!"
+                    f"1. Download the correct .lrc file from the website.\n2. Move that downloaded file directly into your Stems folder:\n{stem_folder}\n(No need to rename it!)\n\nClick OK *ONLY AFTER* you have dropped the file in the folder to resume packaging!"
                 )
                 
-                if lrc_path.exists():
-                    print("Awesome! Successfully loaded your manual 'lyrics.lrc' file!")
+                lrc_path = find_lrc()
+                if lrc_path:
+                    print(f"Awesome! Successfully loaded your manual '{lrc_path.name}' file!")
                 else:
-                    print("No lyrics.lrc found in the folder. Proceeding without lyrics...")
+                    print("No .lrc file found in the folder. Proceeding without lyrics...")
             else:
                 print("Skipping lyrics. Proceeding without them...")
 
@@ -515,7 +524,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     print(f"Creating {zip_filename.name}...")
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(metadata_path, arcname="song_metadata.json")
-        if lrc_path.exists():
+        if lrc_path and lrc_path.exists():
             zipf.write(lrc_path, arcname="lyrics.lrc")
         if (stem_folder / "cover.jpg").exists():
             zipf.write(stem_folder / "cover.jpg", arcname="cover.jpg")
