@@ -568,6 +568,27 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
                 child: Text("Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
               ),
+              if (_loadedSongDir != null) ...[
+                ListTile(
+                  contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.info_outline, color: Colors.white),
+                  title: const Text('Song Details', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showSongDetails(_loadedSongDir!);
+                  },
+                ),
+                ListTile(
+                  contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.playlist_add, color: Colors.white),
+                  title: const Text('Add to Setlist', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _addToPlaylist(_loadedSongDir!.path.split(Platform.pathSeparator).last);
+                  },
+                ),
+                const Divider(color: Colors.white12, indent: 32, endIndent: 24),
+              ],
               StatefulBuilder(
                 builder: (context, setModalState) {
                   return ListTile(
