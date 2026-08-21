@@ -429,11 +429,14 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
             audio_files.append(path_2x)
     
     # Zip it all up
-    print("Downloading lyrics...")
-    try:
-        import syncedlyrics
-        lrc_path = stem_folder / "lyrics.lrc"
-        if not lrc_path.exists():
+    print("Checking for lyrics...")
+    lrc_path = stem_folder / "lyrics.lrc"
+    if lrc_path.exists():
+        print("Found existing 'lyrics.lrc' file in folder. Skipping download!")
+    else:
+        print("Downloading lyrics...")
+        try:
+            import syncedlyrics
             search_query = f"{song_name} {artist_name}".strip()
             lrc_content = syncedlyrics.search(search_query)
             if lrc_content:
@@ -441,11 +444,33 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                     f.write(lrc_content)
                 print("Successfully downloaded synced lyrics (.lrc)!")
             else:
-                print("Could not find synced lyrics online. (You can manually add a 'lyrics.lrc' file here later).")
-        else:
-            print("Found existing 'lyrics.lrc' file in folder.")
-    except Exception as e:
-        print(f"Lyrics download failed: {e}")
+                raise Exception("No lyrics found in database.")
+        except Exception as e:
+            print(f"Automated lyrics download failed: {e}")
+            import webbrowser
+            import urllib.parse
+            from tkinter import messagebox
+            
+            wants_manual = messagebox.askyesno(
+                "Lyrics Not Found", 
+                f"We couldn't automatically find synced lyrics for '{song_name}'.\n\nWould you like to manually download them from Lyricsify.com right now?"
+            )
+            
+            if wants_manual:
+                query = urllib.parse.quote(f"{song_name} {artist_name}".strip())
+                webbrowser.open(f"https://www.lyricsify.com/search?q={query}")
+                
+                messagebox.showinfo(
+                    "Waiting for Lyrics...", 
+                    f"1. Download the correct .lrc file from the website.\n2. Rename it to exactly 'lyrics.lrc'.\n3. Place it inside your Stems folder:\n{stem_folder}\n\nClick OK *ONLY AFTER* you have placed the file in the folder to resume packaging!"
+                )
+                
+                if lrc_path.exists():
+                    print("Awesome! Successfully loaded your manual 'lyrics.lrc' file!")
+                else:
+                    print("No lyrics.lrc found in the folder. Proceeding without lyrics...")
+            else:
+                print("Skipping lyrics. Proceeding without them...")
 
     zip_filename = Path(output_path) / f"{song_name.replace(' ', '_')}.zip"
     
