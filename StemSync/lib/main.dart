@@ -2144,7 +2144,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Press back again to exit', style: TextStyle(color: Colors.white)), duration: Duration(seconds: 2), backgroundColor: Colors.teal),
+            SnackBar(
+              content: const Text('Press back again to exit', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
+              duration: const Duration(seconds: 2), 
+              backgroundColor: Colors.grey[900],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              width: 250,
+            ),
           );
           return;
         }
