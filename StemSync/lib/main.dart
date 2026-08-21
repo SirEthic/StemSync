@@ -276,7 +276,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             const SizedBox(height: 16),
             _buildDetailRow(Icons.speed, "Tempo (BPM)", bpm),
             const SizedBox(height: 16),
-            _buildDetailRow(Icons.layers, "Available Stems", "$stemCount separated stems"),
+            _buildDetailRow(Icons.layers, "Available Stems", "$stemCount"),
           ],
         ),
         actionsPadding: const EdgeInsets.only(bottom: 16, right: 16),
