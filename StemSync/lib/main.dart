@@ -1658,7 +1658,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       onTap: () => _openSong(dir),
                     );
                   },
-              ),
+                );
+              },
+            ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _loadZipFile,
           icon: const Icon(Icons.folder_zip),
