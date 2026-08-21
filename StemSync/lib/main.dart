@@ -292,8 +292,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.playlist_add, color: Colors.tealAccent),
-                title: const Text('Add to Setlist', style: TextStyle(color: Colors.tealAccent)),
+                  leading: const Icon(Icons.playlist_add, color: Colors.white),
+                title: const Text('Add to Setlist', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _addToPlaylist(dirName);
@@ -552,8 +552,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                leading: const Icon(Icons.onetwothree, color: Colors.tealAccent),
-                title: const Text('Count In', style: TextStyle(color: Colors.tealAccent)),
+                leading: const Icon(Icons.onetwothree, color: Colors.white),
+                title: const Text('Count In', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showCountInMenu();
@@ -600,8 +600,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                  leading: const Icon(Icons.tune, color: Colors.tealAccent),
-                title: const Text('Share Modified Stems (ZIP)', style: TextStyle(color: Colors.tealAccent)),
+                  leading: const Icon(Icons.tune, color: Colors.white),
+                title: const Text('Share Modified Stems (ZIP)', style: TextStyle(color: Colors.white)),
                 subtitle: const Text("Zip and share the stems with your pitch/tempo/volume changes", style: TextStyle(color: Colors.white70)),
                 onTap: () {
                   Navigator.pop(ctx);
