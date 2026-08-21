@@ -157,6 +157,18 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     # Extract the scalar value from the tempo array if needed (librosa 0.10+ returns an array)
     bpm = float(tempo[0]) if isinstance(tempo, (list, tuple)) or hasattr(tempo, '__iter__') else float(tempo)
     
+    # Extrapolate beats backwards to the beginning of the song
+    if len(beat_times) > 0 and beat_times[0] > 0.5:
+        beat_interval = 60.0 / bpm
+        current_early_beat = beat_times[0] - beat_interval
+        early_beats = []
+        while current_early_beat > 0:
+            early_beats.append(current_early_beat)
+            current_early_beat -= beat_interval
+        early_beats.reverse()
+        import numpy as np
+        beat_times = np.concatenate((early_beats, beat_times))
+    
     print(f"Detected Tempo: {bpm:.1f} BPM")
     print(f"Found {len(beat_times)} beats.")
 
