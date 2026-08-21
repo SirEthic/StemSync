@@ -71,6 +71,7 @@ flutter:
   assets:
     - assets/tick.wav
     - assets/icon.jpg
+    - assets/splash.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
