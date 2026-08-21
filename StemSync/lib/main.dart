@@ -405,6 +405,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   Timer? _countInTimer;
   int _currentCountInTick = 0;
   AudioSource? _beepSource;
+  bool _isSongLooping = true;
   
   // Bouncing State
   bool _isBouncing = false;
@@ -507,6 +508,40 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               const Padding(
                 padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
                 child: Text("Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              ),
+              StatefulBuilder(
+                builder: (context, setModalState) {
+                  return ListTile(
+                    contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                    leading: Icon(_isSongLooping ? Icons.repeat : Icons.repeat_one, color: Colors.orangeAccent),
+                    title: Text(_isSongLooping ? 'Looping Song' : 'Play Once', style: const TextStyle(color: Colors.orangeAccent)),
+                    trailing: Switch(
+                      value: _isSongLooping,
+                      activeColor: Colors.orangeAccent,
+                      onChanged: (val) {
+                        setModalState(() { _isSongLooping = val; });
+                        setState(() { _isSongLooping = val; });
+                        for (var t in _tracks) {
+                          SoLoud.instance.setLooping(t.handle, val);
+                        }
+                        for (var t in _metronomeTracks.values) {
+                          SoLoud.instance.setLooping(t.handle, val);
+                        }
+                      },
+                    ),
+                    onTap: () {
+                      bool val = !_isSongLooping;
+                      setModalState(() { _isSongLooping = val; });
+                      setState(() { _isSongLooping = val; });
+                      for (var t in _tracks) {
+                        SoLoud.instance.setLooping(t.handle, val);
+                      }
+                      for (var t in _metronomeTracks.values) {
+                        SoLoud.instance.setLooping(t.handle, val);
+                      }
+                    },
+                  );
+                }
               ),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
@@ -1407,6 +1442,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           if (data['subdivision'] != null) _subdivision = (data['subdivision'] as num).toDouble();
           if (data['isMetronomeOn'] != null) _isMetronomeOn = data['isMetronomeOn'] as bool;
           if (data['countInClicks'] != null) _countInClicks = data['countInClicks'] as int;
+          if (data['isSongLooping'] != null) _isSongLooping = data['isSongLooping'] as bool;
         } catch (_) {}
       }
 
@@ -1439,8 +1475,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         bool isMetronome = filename.toLowerCase().contains('metronome');
         
         final handle = isMetronome
-            ? SoLoud.instance.play(source, paused: true, looping: true)
-            : _stemsBus!.play(source, paused: true, looping: true);
+            ? SoLoud.instance.play(source, paused: true, looping: _isSongLooping)
+            : _stemsBus!.play(source, paused: true, looping: _isSongLooping);
             
         SoLoud.instance.setProtectVoice(handle, true);
         
@@ -2005,6 +2041,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       'subdivision': _subdivision,
       'isMetronomeOn': _isMetronomeOn,
       'countInClicks': _countInClicks,
+      'isSongLooping': _isSongLooping,
       'volumes': <String, double>{},
       'pans': <String, double>{},
       'mutes': <String, bool>{},
