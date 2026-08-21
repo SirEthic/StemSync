@@ -232,6 +232,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     String artist = "Unknown";
     String key = "Unknown";
     String bpm = "Unknown";
+    String genre = "Unknown";
+    String year = "Unknown";
     
     final metaFile = File('${dir.path}/song_metadata.json');
     if (metaFile.existsSync()) {
@@ -241,6 +243,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         artist = meta['artist'] ?? artist;
         if (meta['key'] != null) key = meta['key'].toString();
         if (meta['tempo_bpm'] != null) bpm = (meta['tempo_bpm'] as num).toStringAsFixed(2);
+        if (meta['genre'] != null) genre = meta['genre'].toString();
+        if (meta['year'] != null) year = meta['year'].toString();
       } catch (e) {}
     }
     
@@ -275,6 +279,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             _buildDetailRow(Icons.music_note, "Key Signature", key),
             const SizedBox(height: 16),
             _buildDetailRow(Icons.speed, "Tempo (BPM)", bpm),
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.category, "Genre", genre),
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.calendar_today, "Release Year", year),
             const SizedBox(height: 16),
             _buildDetailRow(Icons.layers, "Available Stems", "$stemCount"),
           ],
