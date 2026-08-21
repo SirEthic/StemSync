@@ -1645,15 +1645,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       leading: leadingWidget,
                       title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                       subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.grey),
-                            onPressed: () => _deleteSong(dir),
-                          ),
-                          const Icon(Icons.chevron_right, color: Colors.grey),
-                        ],
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.grey),
+                        onPressed: () => _deleteSong(dir),
                       ),
                       onTap: () => _openSong(dir),
                     );
