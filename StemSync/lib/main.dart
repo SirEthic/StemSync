@@ -633,8 +633,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.music_note, color: Colors.white),
-                title: const Text('Export Chord Sheet (Image)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text("Generate and share a rhythm slash lead sheet", style: TextStyle(color: Colors.white70)),
+                title: const Text('Export Chord Sheet (PDF)', style: TextStyle(color: Colors.white)),
+                subtitle: const Text("Generate and share a rhythm slash lead sheet as PDF", style: TextStyle(color: Colors.white70)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _exportChordSheet();
@@ -775,7 +775,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, _chords, _baseTempo);
       
       if (file != null) {
-        final xFile = XFile(file.path, mimeType: 'image/png');
+        final xFile = XFile(file.path, mimeType: 'application/pdf');
         await Share.shareXFiles([xFile], text: "$title - Chord Sheet");
       }
     } catch (e) {
