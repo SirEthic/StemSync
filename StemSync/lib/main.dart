@@ -73,37 +73,6 @@ class StemSyncApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        
-        if (_activeSongDir != null) {
-          _closeMixer();
-          return;
-        }
-        
-        if (_activePlaylist != null) {
-          setState(() { _activePlaylist = null; });
-          return;
-        }
-        
-        final now = DateTime.now();
-        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Press back again to exit', style: TextStyle(color: Colors.white)), duration: Duration(seconds: 2), backgroundColor: Colors.teal),
-          );
-          return;
-        }
-        
-        SystemNavigator.pop();
-      },
-      child: _buildContent(context),
-    );
-  }
-
-  Widget _buildContent(BuildContext context) {
     return MaterialApp(
       title: 'StemSync',
       debugShowCheckedModeBanner: false,
@@ -1728,6 +1697,37 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        if (_activeSongDir != null) {
+          _closeMixer();
+          return;
+        }
+        
+        if (_activePlaylist != null) {
+          setState(() { _activePlaylist = null; });
+          return;
+        }
+        
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Press back again to exit', style: TextStyle(color: Colors.white)), duration: Duration(seconds: 2), backgroundColor: Colors.teal),
+          );
+          return;
+        }
+        
+        SystemNavigator.pop();
+      },
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     bool isPlaying = _tracks.isNotEmpty && !SoLoud.instance.getPause(_tracks.first.handle);
     String songName = _songMetadata?['song_name'] ?? 'Select a Song';
 
