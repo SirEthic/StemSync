@@ -14,38 +14,36 @@ except ImportError:
     print("Please run: pip install librosa soundfile")
     exit(1)
 
-def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist=""):
+def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist="", original_track_path=""):
     stem_folder = Path(stem_folder_path)
     if not stem_folder.exists() or not stem_folder.is_dir():
-        print(f"Error: Folder '{stem_folder}' does not exist.")
-        return
-
+        raise Exception("Invalid stem folder selected!")
+        
     print(f"\nProcessing '{song_name}'...")
+    audio_files = list(stem_folder.glob("*.wav")) + list(stem_folder.glob("*.mp3")) + list(stem_folder.glob("*.ogg"))
     
-    audio_files = []
-    for ext in ['*.wav', '*.mp3', '*.flac']:
-        for file in stem_folder.glob(ext):
-            if "0_Metronome" not in file.name:
-                audio_files.append(file)
-        
     if not audio_files:
-        print("No audio files found in the folder!")
-        return
-        
+        raise Exception("No audio files found in the selected folder!")
+
+    sr = 22050
+    metro_sr = 44100
+    
     print("Combining stems for accurate full-mix beat detection...")
     import numpy as np
-    y = None
-    sr = 22050
+    
+    # Find the longest stem to initialize y
+    max_len = 0
     for file in audio_files:
         y_stem, _ = librosa.load(file, sr=sr)
-        if y is None:
-            y = y_stem
-        else:
-            if len(y_stem) > len(y):
-                y = np.pad(y, (0, len(y_stem) - len(y)))
-            elif len(y) > len(y_stem):
-                y_stem = np.pad(y_stem, (0, len(y) - len(y_stem)))
-            y += y_stem
+        if len(y_stem) > max_len:
+            max_len = len(y_stem)
+            
+    y = np.zeros(max_len)
+    for file in audio_files:
+        y_stem, _ = librosa.load(file, sr=sr)
+        if len(y_stem) < len(y):
+            y_stem = np.pad(y_stem, (0, len(y) - len(y_stem)))
+        y += y_stem
             
     artist_name = manual_artist.strip()
     if not artist_name:
@@ -92,6 +90,19 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 return out if 'track' in out else None
 
             async def aggressive_shazam():
+                # 0. Try original un-separated song if provided
+                if original_track_path and os.path.exists(original_track_path):
+                    print("  -> Trying the original studio master track!")
+                    y_orig, orig_sr = librosa.load(original_track_path, sr=44100)
+                    start_sample = int(min(60.0, len(y_orig)/orig_sr/3.0) * 44100)
+                    end_sample = int(min(start_sample/44100 + 15.0, len(y_orig)/orig_sr) * 44100)
+                    y_slice = y_orig[start_sample:end_sample]
+                    y_norm = y_slice / np.max(np.abs(y_slice) + 1e-8)
+                    sf.write(temp_wav, y_norm, 44100, subtype='PCM_16')
+                    res = await shazam.recognize(temp_wav)
+                    if 'track' in res: return res
+                    print("  -> Original track failed, falling back to stems...")
+            
                 # 1. Try full mix at different timestamps
                 for point in test_points:
                     print(f"  -> Trying full mix at {point}s...")
@@ -497,6 +508,7 @@ if __name__ == "__main__":
         artist = artist_var.get().strip()
         folder = folder_var.get().strip()
         out = out_var.get().strip()
+        orig = orig_var.get().strip()
         
         if not song or not folder:
             messagebox.showerror("Error", "Please provide both a Song Name and Stems Folder.")
@@ -508,11 +520,15 @@ if __name__ == "__main__":
         btn_package.configure(state="disabled")
         btn_folder.configure(state="disabled")
         btn_out.configure(state="disabled")
+        try:
+            btn_orig.configure(state="disabled")
+        except:
+            pass
         
         def run_task():
             try:
                 print(f"=== Starting StemSync Packaging: {song} ===")
-                create_bandtrack_zip(song, folder, out, manual_artist=artist)
+                create_bandtrack_zip(song, folder, out, manual_artist=artist, original_track_path=orig)
             except Exception as e:
                 print(f"\n[ERROR]: {e}")
                 err_msg = str(e)
@@ -521,6 +537,10 @@ if __name__ == "__main__":
                 root.after(0, lambda: btn_package.configure(state="normal"))
                 root.after(0, lambda: btn_folder.configure(state="normal"))
                 root.after(0, lambda: btn_out.configure(state="normal"))
+                try:
+                    root.after(0, lambda: btn_orig.configure(state="normal"))
+                except:
+                    pass
                 
         threading.Thread(target=run_task, daemon=True).start()
 
@@ -570,17 +590,28 @@ if __name__ == "__main__":
     ctk.CTkLabel(card2, text="Directories", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=3, sticky="w", padx=25, pady=(15, 10))
     
     folder_var = tk.StringVar()
+    orig_var = tk.StringVar()
     out_var = tk.StringVar()
     
-    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
-    btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_folder)
-    btn_folder.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
+    def select_orig():
+        orig = filedialog.askopenfilename(title="Select Original Song", filetypes=[("Audio", "*.mp3 *.wav *.flac")])
+        if orig:
+            orig_var.set(orig)
+
+    ctk.CTkLabel(card2, text="Original Track", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
+    ctk.CTkEntry(card2, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Optional (improves Shazam)").grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
+    btn_orig = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_orig)
+    btn_orig.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card2, text="Output", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
+    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 10))
+    ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
+    btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_folder)
+    btn_folder.grid(row=2, column=2, padx=(0, 25), pady=(0, 10))
+    
+    ctk.CTkLabel(card2, text="Output Zip Dir", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
     btn_out = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_out_dir)
-    btn_out.grid(row=2, column=2, padx=(0, 25), pady=(0, 20))
+    btn_out.grid(row=3, column=2, padx=(0, 25), pady=(0, 20))
     
     # -- Action Area --
     btn_package = ctk.CTkButton(main_frame, text="Start Packaging", command=start_packaging, font=ctk.CTkFont(size=14, weight="normal"), height=40, corner_radius=4, fg_color="#0E639C", text_color="#FFFFFF", hover_color="#1177BB")
