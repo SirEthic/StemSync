@@ -1,6 +1,6 @@
 # StemSync
 
-![StemSync Logo](StemSync/assets/icon.jpg)
+![StemSync Logo](StemSync/assets/icon_foreground.png)
 
 **StemSync** is a powerful mobile application designed for musicians, producers, and singers. It allows you to take your AI-separated instrument stems and dynamically mix, pitch-shift, and tempo-shift them in real-time directly on your Android device.
 
