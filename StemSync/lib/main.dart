@@ -83,9 +83,9 @@ class StemSyncApp extends StatelessWidget {
         splashFactory: NoSplash.splashFactory,
         splashColor: Colors.transparent,
         highlightColor: Colors.white10,
-        scaffoldBackgroundColor: const Color(0xFF000000),
+        scaffoldBackgroundColor: const Color(0xFF010417),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF000000),
+          backgroundColor: Color(0xFF010417),
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
