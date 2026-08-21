@@ -240,7 +240,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         title = meta['song_name'] ?? title;
         artist = meta['artist'] ?? artist;
         if (meta['key'] != null) key = meta['key'].toString();
-        if (meta['tempo_bpm'] != null) bpm = meta['tempo_bpm'].toString();
+        if (meta['tempo_bpm'] != null) bpm = (meta['tempo_bpm'] as num).toStringAsFixed(2);
       } catch (e) {}
     }
     
