@@ -769,7 +769,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       return;
     }
     
-    setState(() { _isExporting = true; });
     
     try {
       final title = _songMetadata != null ? (_songMetadata!['song_name'] ?? _activeSongDir!.path.split(Platform.pathSeparator).last) : "Chord Sheet";
@@ -781,8 +780,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error generating chord sheet: $e")));
-    } finally {
-      setState(() { _isExporting = false; });
     }
   }
 
