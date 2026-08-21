@@ -69,7 +69,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                     break
                     
             temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
-            shazam = Shazam()
+            shazam = Shazam(language='en-IN', endpoint_country='IN')
             
             async def try_recognize(audio_data, start_sec):
                 start_sample = int(start_sec * sr)
