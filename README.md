@@ -18,7 +18,7 @@
 StemSync operates in a two-part workflow. The heavy AI separation is done on your PC using UVR5, and the resulting stems are packaged and sent to your phone for mixing.
 
 ### 1. Prerequisites (UVR5)
-Before using StemSync, you must separate your track. Use [Ultimate Vocal Remover 5 (UVR5)](https://ultimatevocalremover.com/) (or a similar tool) to separate your audio file into 6 distinct stems: **Vocals, Drums, Bass, Guitar, Piano, and Other**. Place these output .wav files into a single folder.
+Before using StemSync, you must separate your track. Use [Ultimate Vocal Remover 5 (UVR5)](https://ultimatevocalremover.com/) (or a similar tool) to separate your audio file into 6 distinct stems: **Vocals, Drums, Bass, Guitar, Piano, and Other**. Place these output .wav or .mp3 files into a single folder.
 
 ### 2. The Windows Packager (PC)
 1. Navigate to the [Releases](https://github.com/SirEthic/StemSync/releases) page and download StemSync_Packager_Setup.exe.
