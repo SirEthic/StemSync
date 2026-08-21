@@ -245,6 +245,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
     
     int stemCount = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp3') || f.path.endsWith('.wav')).length;
+    final coverFile = File('${dir.path}/cover.jpg');
     
     showDialog(
       context: context,
@@ -255,7 +256,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         contentPadding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
         title: Column(
           children: [
-            const Icon(Icons.album_outlined, size: 48, color: Colors.tealAccent),
+            coverFile.existsSync() 
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16), 
+                    child: Image.file(coverFile, width: 96, height: 96, fit: BoxFit.cover)
+                  )
+                : const Icon(Icons.album_outlined, size: 80, color: Colors.tealAccent),
             const SizedBox(height: 16),
             Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white)),
             const SizedBox(height: 4),
