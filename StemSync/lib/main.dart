@@ -6,6 +6,7 @@ import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -16,6 +17,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:share_plus/share_plus.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
@@ -223,6 +225,47 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     );
   }
   
+  void _showSongDetails(Directory dir) {
+    String title = dir.path.split(Platform.pathSeparator).last;
+    String artist = "Unknown";
+    String key = "Unknown";
+    String bpm = "Unknown";
+    
+    final metaFile = File('${dir.path}/song_metadata.json');
+    if (metaFile.existsSync()) {
+      try {
+        final meta = jsonDecode(metaFile.readAsStringSync());
+        title = meta['song_name'] ?? title;
+        artist = meta['artist'] ?? artist;
+        if (meta['key'] != null) key = meta['key'].toString();
+        if (meta['bpm'] != null) bpm = meta['bpm'].toString();
+      } catch (e) {}
+    }
+    
+    int stemCount = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp3') || f.path.endsWith('.wav')).length;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Artist: $artist"),
+            const SizedBox(height: 8),
+            Text("Key: $key"),
+            const SizedBox(height: 8),
+            Text("BPM: $bpm"),
+            const SizedBox(height: 8),
+            Text("Stem Tracks: $stemCount"),
+          ]
+        ),
+        actions: [ TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Close", style: TextStyle(color: Colors.tealAccent))) ]
+      )
+    );
+  }
+
   void _showLibrarySongOptions(Directory dir, String dirName) {
     showModalBottomSheet(
       context: context,
@@ -235,6 +278,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               const Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
+                title: const Text('View Song Details', style: TextStyle(color: Colors.blueAccent)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSongDetails(dir);
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.playlist_add, color: Colors.tealAccent),
@@ -429,6 +480,139 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     await beepFile.writeAsBytes(buffer.buffer.asUint8List());
     
     _beepSource = await SoLoud.instance.loadFile(beepFile.path);
+  }
+
+  void _showExportMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text("Export / Share", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.audio_file, color: Colors.blueAccent),
+                title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.blueAccent)),
+                subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _exportMix();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tune, color: Colors.tealAccent),
+                title: const Text('Share Modified Stems (ZIP)', style: TextStyle(color: Colors.tealAccent)),
+                subtitle: const Text("Zip and share the stems with your pitch/tempo/volume changes", style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _shareModifiedStems();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_zip, color: Colors.orangeAccent),
+                title: const Text('Share Original Song (ZIP)', style: TextStyle(color: Colors.orangeAccent)),
+                subtitle: const Text("Zip and share the original, unmodified song folder", style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _shareOriginalSong();
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  Future<void> _shareOriginalSong() async {
+    if (_activeSongDir == null) return;
+    setState(() => _isBouncing = true);
+    
+    final docDir = await getApplicationDocumentsDirectory();
+    final outZip = '${docDir.path}/${_activeSongDir!.path.split(Platform.pathSeparator).last}_Original.zip';
+    
+    var encoder = ZipFileEncoder();
+    encoder.create(outZip);
+    for (var file in _activeSongDir!.listSync()) {
+      if (file is File) {
+        encoder.addFile(file);
+      }
+    }
+    encoder.close();
+    
+    setState(() => _isBouncing = false);
+    await Share.shareXFiles([XFile(outZip)], text: 'Original Stems');
+  }
+
+  Future<void> _shareModifiedStems() async {
+    if (_activeSongDir == null || _tracks.isEmpty) return;
+    setState(() => _isBouncing = true);
+    
+    final docDir = await getApplicationDocumentsDirectory();
+    final tempDir = Directory('${docDir.path}/temp_stems');
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    tempDir.createSync();
+    
+    double pitchRatio = pow(2.0, _pitchShiftSemitones / 12.0).toDouble();
+    
+    String buildAtempo(double ratio) {
+      if (ratio == 1.0) return "";
+      if (ratio >= 0.5 && ratio <= 2.0) return "atempo=$ratio,";
+      if (ratio < 0.5) return "atempo=0.5,atempo=${ratio/0.5},";
+      return "atempo=2.0,atempo=${ratio/2.0},";
+    }
+
+    List<TrackData> activeTracks = [..._tracks];
+    if (_isMetronomeOn && _metronomeTracks.containsKey(_subdivision)) {
+      activeTracks.add(_metronomeTracks[_subdivision]!);
+    }
+    
+    for (var track in activeTracks) {
+      double amp = track.volume;
+      bool isMetronome = track.name.toLowerCase().contains("metronome");
+      if (!isMetronome) {
+         amp = _getAmplitudeFromSlider(track.volume);
+      } else {
+         amp = _getAmplitudeFromSlider(_metronomeVolume);
+      }
+      
+      String trackFilter = "";
+      if (isMetronome) {
+        trackFilter = buildAtempo(_playbackSpeed);
+      } else {
+        if (_pitchShiftSemitones != 0.0 || _playbackSpeed != 1.0) {
+           int newRate = (44100 * pitchRatio).toInt();
+           double atempoRatio = _playbackSpeed / pitchRatio;
+           trackFilter = "asetrate=$newRate,${buildAtempo(atempoRatio)}";
+        }
+      }
+      
+      String finalFilter = "${trackFilter}volume=$amp";
+      if (finalFilter.endsWith(',')) finalFilter = finalFilter.substring(0, finalFilter.length - 1);
+      
+      String outPath = '${tempDir.path}/${track.name}.wav';
+      String cmd = "-i \"${track.file.path}\" -af \"$finalFilter\" -y \"$outPath\"";
+      await FFmpegKit.execute(cmd);
+    }
+    
+    File meta = File('${_activeSongDir!.path}/song_metadata.json');
+    if (meta.existsSync()) meta.copySync('${tempDir.path}/song_metadata.json');
+    
+    final outZip = '${docDir.path}/${_activeSongDir!.path.split(Platform.pathSeparator).last}_Modified.zip';
+    var encoder = ZipFileEncoder();
+    encoder.create(outZip);
+    for (var file in tempDir.listSync()) {
+      if (file is File) encoder.addFile(file);
+    }
+    encoder.close();
+    
+    setState(() => _isBouncing = false);
+    await Share.shareXFiles([XFile(outZip)], text: 'Modified Stems');
   }
 
   Future<void> _exportMix() async {
@@ -2440,7 +2624,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               
               IconButton(
                 icon: Icon(Icons.ios_share, color: _isBouncing ? Colors.blueAccent : Colors.white, size: 28),
-                onPressed: _isBouncing ? null : _exportMix,
+                onPressed: _isBouncing ? null : _showExportMenu,
               ),
               
               IconButton(

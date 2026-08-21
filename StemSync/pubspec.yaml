@@ -41,6 +41,7 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   ffmpeg_kit_flutter_new: ^4.6.2
   http: ^1.6.0
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:
