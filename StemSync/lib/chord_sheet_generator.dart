@@ -12,12 +12,11 @@ class ChordSheetGenerator {
     List<List<String>> measures = [];
     if (chords.isEmpty) return null;
 
-    double lastEndTime = 0;
-    for (var c in chords) {
-      double end = c[1] is num ? (c[1] as num).toDouble() : double.parse(c[1].toString());
-      if (end > lastEndTime) lastEndTime = end;
-    }
-    
+    // Chords are Maps with keys 'time' and 'chord'
+    // Use the last chord's time + one extra measure as the total length
+    double lastTime = (chords.last['time'] as num).toDouble();
+    double lastEndTime = lastTime + secondsPerMeasure;
+
     int totalMeasures = (lastEndTime / secondsPerMeasure).ceil();
     if (totalMeasures == 0) totalMeasures = 1;
 
@@ -26,8 +25,13 @@ class ChordSheetGenerator {
     }
 
     for (var c in chords) {
-      double start = c[0] is num ? (c[0] as num).toDouble() : double.parse(c[0].toString());
-      String chordName = c[2].toString();
+      final rawTime = c['time'];
+      final rawChord = c['chord'];
+      if (rawTime == null || rawChord == null) continue;
+
+      double start = (rawTime as num).toDouble();
+      String chordName = rawChord.toString();
+
       int measureIndex = (start / secondsPerMeasure).floor();
       double timeInMeasure = start - (measureIndex * secondsPerMeasure);
       int beatIndex = (timeInMeasure / secondsPerBeat).round().clamp(0, 3);
