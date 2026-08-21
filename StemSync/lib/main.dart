@@ -2626,6 +2626,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           ),
 
           if (_showSections)
+            const SizedBox(height: 16),
+          if (_showSections)
             ValueListenableBuilder<int>(
               valueListenable: _activeSectionNotifier,
               builder: (context, activeSection, child) {
@@ -2824,7 +2826,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: active ? Colors.tealAccent.withValues(alpha: 0.2) : Colors.transparent,
           border: Border.all(color: active ? Colors.tealAccent : Colors.grey[800]!),
