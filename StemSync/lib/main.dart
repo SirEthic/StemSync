@@ -2520,7 +2520,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: _tracks.map((track) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
                   child: Row(
                     children: [
                       SizedBox(
@@ -2590,7 +2590,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                       // Smooth Local Slider
-                                      Slider(
+                                      SliderTheme(
+  data: SliderTheme.of(context).copyWith(
+    trackHeight: 2.0,
+    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
+  ),
+  child: Slider(
                                         value: track.volume,
                                         min: 0.0,
                                         max: 1.0,
@@ -2605,7 +2611,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                           setSliderState(() { track.volume = val; });
                                           _updateTrackVolumes();
                                         },
-                                      ),
+                                      )
+),
                                     ],
                                   );
                                 }
