@@ -1387,6 +1387,27 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _showChords = false;
       _showSections = false;
       _showLyrics = false;
+      _currentPositionNotifier.value = 0.0;
+
+      final audioFiles = targetDir.listSync(recursive: true).whereType<File>().where((f) => 
+        f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
+      ).toList();
+
+      audioFiles.sort((a, b) {
+        int order(String name) {
+          final l = name.toLowerCase();
+          if (l.contains('vocal')) return 1;
+          if (l.contains('drum')) return 2;
+          if (l.contains('bass')) return 3;
+          if (l.contains('guitar')) return 4;
+          if (l.contains('piano')) return 5;
+          return 6;
+        }
+        return order(a.path).compareTo(order(b.path));
+      });
+
+      // Start loading audio in the background IMMEDIATELY to hide JSON parsing latency
+      final audioLoadFuture = Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path)));
 
       final metaFile = File('${targetDir.path}/song_metadata.json');
       if (metaFile.existsSync()) {
@@ -1453,29 +1474,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         } catch (_) {}
       }
 
-      final audioFiles = targetDir.listSync(recursive: true).whereType<File>().where((f) => 
-        f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
-      ).toList();
-
-      audioFiles.sort((a, b) {
-        int order(String name) {
-          final l = name.toLowerCase();
-          if (l.contains('vocal')) return 1;
-          if (l.contains('drum')) return 2;
-          if (l.contains('bass')) return 3;
-          if (l.contains('guitar')) return 4;
-          if (l.contains('piano')) return 5;
-          return 6;
-        }
-        return order(a.path).compareTo(order(b.path));
-      });
-
       _stemsBus = SoLoud.instance.createMixingBus(name: 'stems');
       _stemsBus!.playOnEngine();
       _stemsBus!.filters.limiterFilter.activate(); // Prevent digital clipping from overlapping FFT windows
       // Pitch shift filter is activated lazily in _applyPitchAndTempo only when needed.
 
-      final sources = await Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path)));
+      final sources = await audioLoadFuture;
       for (int i = 0; i < audioFiles.length; i++) {
         final audioFile = audioFiles[i];
         final filename = audioFile.path.split(Platform.pathSeparator).last;
@@ -1526,8 +1530,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       setState(() { _isLoading = false; });
       
       if (autoPlay) {
-        for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
-        for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
+        _togglePlayPause();
       }
 
     } catch (e) {
