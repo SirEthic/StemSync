@@ -2634,8 +2634,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             ),
           ),
 
-          if (_showSections)
-            const SizedBox(height: 16),
+          const SizedBox(height: 48),
           if (_showSections)
             ValueListenableBuilder<int>(
               valueListenable: _activeSectionNotifier,
