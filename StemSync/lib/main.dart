@@ -1196,6 +1196,60 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
 
+  void _playNextSong() {
+    Directory? nextDir;
+    if (_activePlaylist != null) {
+      final list = _playlists[_activePlaylist!]!;
+      final currentName = _activeSongDir!.path.split(Platform.pathSeparator).last;
+      int idx = list.indexOf(currentName);
+      if (idx != -1 && idx < list.length - 1) {
+        String nextName = list[idx + 1];
+        try {
+          nextDir = _savedSongs.firstWhere((s) => s['dir'].path.endsWith(nextName))['dir'];
+        } catch (_) {}
+      }
+    } else {
+      int idx = _savedSongs.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
+      if (idx != -1 && idx < _savedSongs.length - 1) {
+        nextDir = _savedSongs[idx + 1]['dir'];
+      }
+    }
+    
+    if (nextDir != null) {
+      _closeMixer();
+      _openSong(nextDir);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("End of list")));
+    }
+  }
+
+  void _playPrevSong() {
+    Directory? prevDir;
+    if (_activePlaylist != null) {
+      final list = _playlists[_activePlaylist!]!;
+      final currentName = _activeSongDir!.path.split(Platform.pathSeparator).last;
+      int idx = list.indexOf(currentName);
+      if (idx > 0) {
+        String prevName = list[idx - 1];
+        try {
+          prevDir = _savedSongs.firstWhere((s) => s['dir'].path.endsWith(prevName))['dir'];
+        } catch (_) {}
+      }
+    } else {
+      int idx = _savedSongs.indexWhere((s) => s['dir'].path == _activeSongDir!.path);
+      if (idx > 0) {
+        prevDir = _savedSongs[idx - 1]['dir'];
+      }
+    }
+    
+    if (prevDir != null) {
+      _closeMixer();
+      _openSong(prevDir);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Beginning of list")));
+    }
+  }
+
   Future<void> _openSong(Directory targetDir) async {
     try {
       if (_loadedSongDir?.path == targetDir.path && _tracks.isNotEmpty) {
@@ -2235,8 +2289,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             Text(_transposeKey(_songKey, _pitchShiftSemitones.toInt()), style: const TextStyle(color: Colors.tealAccent, fontSize: 12)),
           ]
         ),
-        centerTitle: true,
-      ),
+          centerTitle: true,
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (val) {
+                if (val == 'count_in') _showCountInMenu();
+                if (val == 'export') _showExportMenu();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'count_in', child: Text("Count In Options")),
+                const PopupMenuItem(value: 'export', child: Text("Export & Share")),
+              ],
+            ),
+          ],
+        ),
         body: Column(
             children: [
               if (_isBouncing)
@@ -2599,9 +2666,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 icon: Icon(Icons.timer_outlined, color: _isMetronomeOn ? Colors.tealAccent : Colors.white, size: 28), 
                 onPressed: _showMetronomeMenu,
               ),
+              
               IconButton(
-                icon: Icon(Icons.onetwothree, color: _countInClicks > 0 ? Colors.tealAccent : Colors.white, size: 32), 
-                onPressed: _showCountInMenu,
+                icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
+                onPressed: _playPrevSong,
               ),
               
               GestureDetector(
@@ -2623,8 +2691,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               
               IconButton(
-                icon: Icon(Icons.ios_share, color: _isBouncing ? Colors.blueAccent : Colors.white, size: 28),
-                onPressed: _isBouncing ? null : _showExportMenu,
+                icon: const Icon(Icons.skip_next, color: Colors.white, size: 36),
+                onPressed: _playNextSong,
               ),
               
               IconButton(
