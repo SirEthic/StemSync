@@ -2376,11 +2376,26 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                               subtitle: Text("$songCount song${songCount == 1 ? '' : 's'}", style: const TextStyle(color: Colors.grey)),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.grey),
-                                onPressed: () {
-                                  setState(() {
-                                    _playlists.remove(pName);
-                                    _savePlaylists();
-                                  });
+                                onPressed: () async {
+                                  bool confirm = await showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: Colors.grey[900],
+                                      title: const Text("Delete Setlist", style: TextStyle(color: Colors.white)),
+                                      content: const Text("Are you sure you want to delete this setlist? Your separated songs will remain safely in your library.", style: TextStyle(color: Colors.white70)),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
+                                      ],
+                                    ),
+                                  ) ?? false;
+                                  
+                                  if (confirm) {
+                                    setState(() {
+                                      _playlists.remove(pName);
+                                      _savePlaylists();
+                                    });
+                                  }
                                 },
                               ),
                               onTap: () => setState(() => _activePlaylist = pName),
