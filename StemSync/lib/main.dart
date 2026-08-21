@@ -276,11 +276,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           child: Wrap(
             children: [
               const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
+                  child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
               ),
               ListTile(
-                leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.info_outline, color: Colors.blueAccent),
                 title: const Text('View Song Details', style: TextStyle(color: Colors.blueAccent)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -288,7 +289,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.playlist_add, color: Colors.tealAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.playlist_add, color: Colors.tealAccent),
                 title: const Text('Add to Setlist', style: TextStyle(color: Colors.tealAccent)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -296,7 +298,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
                 title: const Text('Delete Song', style: TextStyle(color: Colors.redAccent)),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -492,10 +495,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           child: Wrap(
             children: [
               const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text("Mixer Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
+                child: Text("Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
               ),
               ListTile(
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
                 leading: const Icon(Icons.onetwothree, color: Colors.tealAccent),
                 title: const Text('Count In Options', style: TextStyle(color: Colors.tealAccent)),
                 onTap: () {
@@ -504,6 +508,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 },
               ),
               ListTile(
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
                 leading: const Icon(Icons.ios_share, color: Colors.blueAccent),
                 title: const Text('Export & Share', style: TextStyle(color: Colors.blueAccent)),
                 onTap: () {
@@ -528,11 +533,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           child: Wrap(
             children: [
               const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text("Export / Share", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
+                  child: Text("Export / Share", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
               ),
               ListTile(
-                leading: const Icon(Icons.audio_file, color: Colors.blueAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.audio_file, color: Colors.blueAccent),
                 title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.blueAccent)),
                 subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
                 onTap: () {
@@ -541,7 +547,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.tune, color: Colors.tealAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.tune, color: Colors.tealAccent),
                 title: const Text('Share Modified Stems (ZIP)', style: TextStyle(color: Colors.tealAccent)),
                 subtitle: const Text("Zip and share the stems with your pitch/tempo/volume changes", style: TextStyle(color: Colors.white70)),
                 onTap: () {
@@ -550,7 +557,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.folder_zip, color: Colors.orangeAccent),
+                contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                  leading: const Icon(Icons.folder_zip, color: Colors.orangeAccent),
                 title: const Text('Share Original Song (ZIP)', style: TextStyle(color: Colors.orangeAccent)),
                 subtitle: const Text("Zip and share the original, unmodified song folder", style: TextStyle(color: Colors.white70)),
                 onTap: () {
@@ -2118,10 +2126,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             child: Wrap(
                               children: [
                                 const Padding(
-                                  padding: EdgeInsets.all(16.0),
+                                  padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
                                   child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
                                 ),
                                 ListTile(
+                                  contentPadding: const EdgeInsets.only(left: 32, right: 24),
                                   leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
                                   title: const Text('Remove from Setlist', style: TextStyle(color: Colors.redAccent)),
                                   onTap: () {
