@@ -244,7 +244,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         if (meta['key'] != null) key = meta['key'].toString();
         if (meta['tempo_bpm'] != null) bpm = (meta['tempo_bpm'] as num).toStringAsFixed(2);
         if (meta['genre'] != null) genre = meta['genre'].toString();
-        if (meta['year'] != null) year = meta['year'].toString();
+        if (meta['release_year'] != null) year = meta['release_year'].toString();
       } catch (e) {}
     }
     
