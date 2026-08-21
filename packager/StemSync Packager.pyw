@@ -80,8 +80,13 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 y_slice = audio_data[start_sample:end_sample]
                 if len(y_slice) == 0: return None
                 
-                y_norm = y_slice / np.max(np.abs(y_slice) + 1e-8)
-                sf.write(temp_wav, y_norm, sr)
+                # Resample to 44100Hz because Shazamio spectrogram fails at 22050Hz
+                import librosa
+                y_shazam = librosa.resample(y_slice, orig_sr=sr, target_sr=44100)
+                y_norm = y_shazam / np.max(np.abs(y_shazam) + 1e-8)
+                
+                # Force 16-bit PCM WAV (Shazamio doesn't like float32/float64 WAVs)
+                sf.write(temp_wav, y_norm, 44100, subtype='PCM_16')
                 
                 out = await shazam.recognize(temp_wav)
                 return out if 'track' in out else None
