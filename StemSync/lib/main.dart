@@ -112,6 +112,8 @@ class MixerScreen extends StatefulWidget {
 }
 
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  bool _showSplash = true;
+  double _splashOpacity = 1.0;
   bool _isLoading = false;
   DateTime? _lastBackPressTime;
   
@@ -2049,6 +2051,15 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _loadLibrary();
       _initBeep();
     }
+    
+    // Hide splash screen immediately after initialization finishes
+    if (mounted) {
+       setState(() => _splashOpacity = 0.0);
+       await Future.delayed(const Duration(milliseconds: 500));
+       if (mounted) {
+          setState(() => _showSplash = false);
+       }
+    }
   }
 
   @override
@@ -2150,7 +2161,34 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         
         SystemNavigator.pop();
       },
-      child: _buildContent(context),
+      child: Stack(
+        children: [
+          _buildContent(context),
+          if (_showSplash)
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: _splashOpacity,
+                duration: const Duration(milliseconds: 500),
+                child: Container(
+                  color: const Color(0xFF000000), // Match scaffold background
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Image.asset('assets/icon.jpg', width: 120, height: 120, fit: BoxFit.cover),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text('STEMSYNC', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 8)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
