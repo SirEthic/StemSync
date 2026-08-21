@@ -73,6 +73,37 @@ class StemSyncApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        if (_activeSongDir != null) {
+          _closeMixer();
+          return;
+        }
+        
+        if (_activePlaylist != null) {
+          setState(() { _activePlaylist = null; });
+          return;
+        }
+        
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Press back again to exit', style: TextStyle(color: Colors.white)), duration: Duration(seconds: 2), backgroundColor: Colors.teal),
+          );
+          return;
+        }
+        
+        SystemNavigator.pop();
+      },
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     return MaterialApp(
       title: 'StemSync',
       debugShowCheckedModeBanner: false,
@@ -109,6 +140,7 @@ class MixerScreen extends StatefulWidget {
 
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _isLoading = false;
+  DateTime? _lastBackPressTime;
   
   List<TrackData> _tracks = [];
   Map<double, TrackData> _metronomeTracks = {};
@@ -1749,14 +1781,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     leading: leadingWidget,
                     title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                      onPressed: () {
-                        setState(() {
-                          _playlists[_activePlaylist!]!.removeAt(index);
-                          _savePlaylists();
-                        });
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text("Remove Song"),
+                                content: Text("Remove '$name' from this setlist?"),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel", style: TextStyle(color: Colors.white))),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      setState(() {
+                                        _playlists[_activePlaylist!]!.removeAt(index);
+                                        _savePlaylists();
+                                      });
+                                    }, 
+                                    child: const Text("Remove", style: TextStyle(color: Colors.redAccent))
+                                  ),
+                                ]
+                              )
+                            );
+                          },
+                        ),
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 8.0, right: 8.0),
+                            child: Icon(Icons.drag_handle, color: Colors.grey),
+                          ),
+                        ),
+                      ],
                     ),
                     onTap: () => _openSong(dir),
                   );
