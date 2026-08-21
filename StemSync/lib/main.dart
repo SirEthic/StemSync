@@ -1798,6 +1798,36 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       ),
                     ),
                     onTap: () => _openSong(dir),
+                    onLongPress: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: const Color(0xFF1A1A1A),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                        builder: (ctx) {
+                          return SafeArea(
+                            child: Wrap(
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Text("Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                  title: const Text('Remove from Setlist', style: TextStyle(color: Colors.redAccent)),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    setState(() {
+                                      _playlists[_activePlaylist!]!.removeAt(index);
+                                      _savePlaylists();
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      );
+                    },
                   );
                 },
               ),
