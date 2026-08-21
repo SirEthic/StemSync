@@ -2705,7 +2705,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2761,7 +2761,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ), 
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
