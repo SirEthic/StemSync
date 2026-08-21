@@ -40,8 +40,11 @@ class LyricLine {
 
 
 
+import 'package:flutter/services.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const StemSyncApp());
 }
 
@@ -160,6 +163,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   Map<String, List<String>> _playlists = {};
   String? _activePlaylist;
+  int _libraryTabIndex = 0;
 
   Future<void> _loadPlaylists() async {
     try {
@@ -1770,159 +1774,161 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       
       var filteredPlaylists = _playlists.keys.where((k) => k.toLowerCase().contains(_searchQuery)).toList();
       
-      return DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            title: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: "Search library...",
-                hintStyle: const TextStyle(color: Colors.white54),
-                border: InputBorder.none,
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
-                suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.white),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() { _searchQuery = ""; });
-                      },
-                    )
-                  : null,
-              ),
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-              onChanged: (val) {
-                setState(() { _searchQuery = val.toLowerCase(); });
-              },
+      return Scaffold(
+        appBar: AppBar(
+          title: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: "Search library...",
+              hintStyle: const TextStyle(color: Colors.white54),
+              border: InputBorder.none,
+              prefixIcon: const Icon(Icons.search, color: Colors.white),
+              suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() { _searchQuery = ""; });
+                    },
+                  )
+                : null,
             ),
-            actions: [
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.sort),
-                onSelected: (String result) {
-                  setState(() { _sortMode = result; });
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'Newest Added',
-                    child: Text('Newest Added'),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'A-Z',
-                    child: Text('A-Z'),
-                  ),
-                ],
-              ),
-            ],
-            bottom: const TabBar(
-              indicatorColor: Colors.tealAccent,
-              tabs: [
-                Tab(text: "SONGS"),
-                Tab(text: "SETLISTS"),
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            onChanged: (val) {
+              setState(() { _searchQuery = val.toLowerCase(); });
+            },
+          ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.sort),
+              onSelected: (String result) {
+                setState(() { _sortMode = result; });
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'Newest Added',
+                  child: Text('Newest Added'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'A-Z',
+                  child: Text('A-Z'),
+                ),
               ],
             ),
-          ),
-          body: _isLibraryLoading 
-            ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-            : TabBarView(
-                children: [
-                  // TAB 1: SONGS
-                  _savedSongs.isEmpty
-                    ? const Center(child: Text("No songs loaded.\nTap the button below to load a .zip!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
-                    : filteredSongs.isEmpty
-                      ? const Center(child: Text("No songs match your search.", style: TextStyle(color: Colors.grey)))
+          ],
+        ),
+        body: _isLibraryLoading 
+          ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
+          : IndexedStack(
+              index: _libraryTabIndex,
+              children: [
+                // TAB 0: SONGS
+                _savedSongs.isEmpty
+                  ? const Center(child: Text("No songs loaded.\nTap the button below to load a .zip!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
+                  : filteredSongs.isEmpty
+                    ? const Center(child: Text("No songs match your search.", style: TextStyle(color: Colors.grey)))
+                    : ListView.builder(
+                        itemCount: filteredSongs.length,
+                        itemBuilder: (context, index) {
+                          final songData = filteredSongs[index];
+                          final dir = songData['dir'] as Directory;
+                          final name = songData['title'] as String;
+                          final subtitleText = songData['subtitle'] as String;
+                          
+                          final coverFile = File('${dir.path}/cover.jpg');
+                          Widget leadingWidget = coverFile.existsSync()
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(coverFile, width: 50, height: 50, fit: BoxFit.cover),
+                                )
+                              : const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white));
+      
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            leading: leadingWidget,
+                            title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                            subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
+                            trailing: PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert, color: Colors.grey),
+                              onSelected: (val) {
+                                if (val == 'add') _addToPlaylist(dir.path.split(Platform.pathSeparator).last);
+                                if (val == 'delete') _deleteSong(dir);
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(value: 'add', child: Text("Add to Setlist")),
+                                const PopupMenuItem(value: 'delete', child: Text("Delete Song", style: TextStyle(color: Colors.red))),
+                              ],
+                            ),
+                            onTap: () => _openSong(dir),
+                          );
+                        },
+                      ),
+                      
+                // TAB 1: SETLISTS
+                Stack(
+                  children: [
+                    filteredPlaylists.isEmpty
+                      ? Center(child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey)))
                       : ListView.builder(
-                          itemCount: filteredSongs.length,
+                          padding: const EdgeInsets.only(bottom: 80),
+                          itemCount: filteredPlaylists.length,
                           itemBuilder: (context, index) {
-                            final songData = filteredSongs[index];
-                            final dir = songData['dir'] as Directory;
-                            final name = songData['title'] as String;
-                            final subtitleText = songData['subtitle'] as String;
-                            
-                            final coverFile = File('${dir.path}/cover.jpg');
-                            Widget leadingWidget = coverFile.existsSync()
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(coverFile, width: 50, height: 50, fit: BoxFit.cover),
-                                  )
-                                : const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white));
-        
+                            final pName = filteredPlaylists[index];
+                            final songCount = _playlists[pName]!.length;
                             return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                              leading: leadingWidget,
-                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                              subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                              trailing: PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                onSelected: (val) {
-                                  if (val == 'add') _addToPlaylist(dir.path.split(Platform.pathSeparator).last);
-                                  if (val == 'delete') _deleteSong(dir);
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(value: 'add', child: Text("Add to Setlist")),
-                                  const PopupMenuItem(value: 'delete', child: Text("Delete Song", style: TextStyle(color: Colors.red))),
-                                ],
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              leading: const CircleAvatar(
+                                backgroundColor: Colors.black26,
+                                child: Icon(Icons.queue_music, color: Colors.tealAccent),
                               ),
-                              onTap: () => _openSong(dir),
+                              title: Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                              subtitle: Text("$songCount song${songCount == 1 ? '' : 's'}", style: const TextStyle(color: Colors.grey)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.grey),
+                                onPressed: () {
+                                  setState(() {
+                                    _playlists.remove(pName);
+                                    _savePlaylists();
+                                  });
+                                },
+                              ),
+                              onTap: () => setState(() => _activePlaylist = pName),
                             );
                           },
                         ),
-                        
-                  // TAB 2: SETLISTS
-                  Stack(
-                    children: [
-                      filteredPlaylists.isEmpty
-                        ? Center(child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey)))
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 80),
-                            itemCount: filteredPlaylists.length,
-                            itemBuilder: (context, index) {
-                              final pName = filteredPlaylists[index];
-                              final songCount = _playlists[pName]!.length;
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                leading: const CircleAvatar(
-                                  backgroundColor: Colors.black26,
-                                  child: Icon(Icons.queue_music, color: Colors.tealAccent),
-                                ),
-                                title: Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                subtitle: Text("$songCount song${songCount == 1 ? '' : 's'}", style: const TextStyle(color: Colors.grey)),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.grey),
-                                  onPressed: () {
-                                    setState(() {
-                                      _playlists.remove(pName);
-                                      _savePlaylists();
-                                    });
-                                  },
-                                ),
-                                onTap: () => setState(() => _activePlaylist = pName),
-                              );
-                            },
-                          ),
-                      Positioned(
-                        bottom: 24,
-                        right: 24,
-                        child: FloatingActionButton.extended(
-                          onPressed: _createPlaylist,
-                          icon: const Icon(Icons.add),
-                          label: const Text("New Setlist"),
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                        ),
+                    Positioned(
+                      bottom: 24,
+                      right: 24,
+                      child: FloatingActionButton.extended(
+                        onPressed: _createPlaylist,
+                        icon: const Icon(Icons.add),
+                        label: const Text("New Setlist"),
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
                       ),
-                    ],
-                  ),
-                ],
-              ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _loadZipFile,
-            icon: const Icon(Icons.folder_zip),
-            label: const Text("Load New .zip"),
-            backgroundColor: Colors.tealAccent,
-            foregroundColor: Colors.black,
-          ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _libraryTabIndex,
+          onTap: (idx) => setState(() => _libraryTabIndex = idx),
+          selectedItemColor: Colors.tealAccent,
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.black,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Songs"),
+            BottomNavigationBarItem(icon: Icon(Icons.queue_music), label: "Setlists"),
+          ],
         ),
+        floatingActionButton: _libraryTabIndex == 0 ? FloatingActionButton.extended(
+          onPressed: _loadZipFile,
+          icon: const Icon(Icons.folder_zip),
+          label: const Text("Load New .zip"),
+          backgroundColor: Colors.tealAccent,
+          foregroundColor: Colors.black,
+        ) : null,
       );
     }
 
