@@ -405,6 +405,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   Timer? _countInTimer;
   final Stopwatch _countInStopwatch = Stopwatch();
   int _currentCountInTick = 0;
+  List<SoundHandle> _countInHandles = [];
   AudioSource? _beepSource;
   bool _isSongLooping = true;
   
@@ -435,15 +436,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
            int expectedTick = (elapsedSec / interval).floor();
            if (expectedTick > _currentCountInTick) {
                _currentCountInTick = expectedTick;
-               if (_currentCountInTick >= _countInClicks) {
-                   _countInTimer!.cancel();
-                   _countInTimer = null;
-                   _countInStopwatch.stop();
-                   for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
-                   for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
-               } else {
-                   _playBeep();
-               }
+               // Beeps are already perfectly scheduled in C++, this just updates the visual countdown number
                setState(() {});
            }
            return; // Do not process normal playback time updates while counting in!
@@ -906,12 +899,23 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     );
   }
 
+    void _cancelCountIn() {
+    if (_countInTimer != null) {
+      _countInTimer!.cancel();
+      _countInTimer = null;
+    }
+    _countInStopwatch.stop();
+    for (var h in _countInHandles) {
+      try { SoLoud.instance.stop(h); } catch (_) {}
+    }
+    _countInHandles.clear();
+  }
+
   void _togglePlayPause() {
     if (_tracks.isEmpty) return;
 
     if (_countInTimer != null && _countInTimer!.isActive) {
-      _countInTimer!.cancel();
-      _countInTimer = null;
+      _cancelCountIn();
       setState(() {});
       return;
     }
@@ -940,12 +944,32 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _currentCountInTick = 0;
         setState(() {});
 
-        // Use a dummy timer as a state flag, but drive the actual high-precision ticks from the 60fps Ticker
-        _countInTimer = Timer(const Duration(days: 99), () {});
+        // 1. Reset C++ audio clock and schedule all beeps with perfect sample-accuracy!
+        SoLoud.instance.resetStreamTime();
+        Duration physicsTime = Duration.zero;
+        int intervalUs = (interval * 1000000).toInt();
+        _countInHandles.clear();
+        for (int i = 0; i < _countInClicks; i++) {
+           if (_beepSource != null) {
+              final h = SoLoud.instance.playClocked(_beepSource!, physicsTime, volume: _getAmplitudeFromSlider(_metronomeVolume));
+              _countInHandles.add(h);
+           }
+           physicsTime += Duration(microseconds: intervalUs);
+        }
+
+        // 2. Start the stopwatch so the UI can loosely track visual updates
         _countInStopwatch.reset();
         _countInStopwatch.start();
         
-        _playBeep(); // Pre-fire first tick
+        // 3. Set a Timer to unpause the tracks precisely when the count-in finishes
+        _countInTimer = Timer(Duration(microseconds: intervalUs * _countInClicks), () {
+            if (_countInTimer == null) return;
+            _countInTimer = null;
+            _countInStopwatch.stop();
+            for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
+            for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
+            setState((){});
+        });
       } else {
         for (var t in _tracks) SoLoud.instance.setPause(t.handle, false);
         for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, false);
@@ -1217,10 +1241,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     for (var t in _metronomeTracks.values) {
       SoLoud.instance.seek(t.handle, Duration(milliseconds: (start * 1000).toInt()));
     }
-    if (_countInTimer != null && _countInTimer!.isActive) {
-      _countInTimer!.cancel();
-      _countInTimer = null;
-    }
+    _cancelCountIn();
     _updateActiveChord(start);
     _updateActiveSection(start);
     _currentPositionNotifier.value = start;
@@ -2095,10 +2116,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   void _closeMixer() {
     _saveMixState();
-    if (_countInTimer != null && _countInTimer!.isActive) {
-      _countInTimer!.cancel();
-      _countInTimer = null;
-    }
+    _cancelCountIn();
     for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
     for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
     setState(() => _activeSongDir = null);
@@ -2448,10 +2466,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   NotificationListener<ScrollNotification>(
                     onNotification: (ScrollNotification scrollInfo) {
                       if (scrollInfo is ScrollStartNotification && scrollInfo.dragDetails != null) {
-                        if (_countInTimer != null && _countInTimer!.isActive) {
-                          _countInTimer!.cancel();
-                          _countInTimer = null;
-                        }
+                        _cancelCountIn();
                         setState(() => _isScrubbingChords = true);
                       } else if (scrollInfo is ScrollUpdateNotification && _isScrubbingChords) {
                         double newPos = scrollInfo.metrics.pixels / 160.0;
@@ -2747,10 +2762,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     value: max(0.0, min(val, _songLength)),
                     max: _songLength,
                     onChangeStart: (v){
-                      if (_countInTimer != null && _countInTimer!.isActive) {
-                        _countInTimer!.cancel();
-                        _countInTimer = null;
-                      }
+                      _cancelCountIn();
                       setState(() => _isScrubbing = true);
                     },
                     onChanged: (v){
@@ -2904,10 +2916,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         for (var t in _metronomeTracks.values) {
           SoLoud.instance.seek(t.handle, Duration(milliseconds: (start * 1000).toInt()));
         }
-        if (_countInTimer != null && _countInTimer!.isActive) {
-          _countInTimer!.cancel();
-          _countInTimer = null;
-        }
+        _cancelCountIn();
         _updateActiveChord(start);
         _updateActiveSection(start);
         setState(() => _currentPositionNotifier.value = start);
