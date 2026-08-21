@@ -87,6 +87,8 @@ class StemSyncApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF000000),
           elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
         ),
         sliderTheme: SliderThemeData(
           activeTrackColor: Colors.tealAccent,
