@@ -575,12 +575,23 @@ if __name__ == "__main__":
     
     song_var = tk.StringVar()
     artist_var = tk.StringVar()
+    orig_var = tk.StringVar()
+    
+    def select_orig():
+        orig = filedialog.askopenfilename(title="Select Original Song", filetypes=[("Audio", "*.mp3 *.wav *.flac")])
+        if orig:
+            orig_var.set(orig)
     
     ctk.CTkLabel(card1, text="Track Title", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
     ctk.CTkEntry(card1, textvariable=song_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 20))
+    ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 10))
+    ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
+    
+    ctk.CTkLabel(card1, text="Original Track", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkEntry(card1, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Optional (guarantees perfect Shazam match)").grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
+    btn_orig = ctk.CTkButton(card1, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_orig)
+    btn_orig.grid(row=3, column=2, padx=(0, 25), pady=(0, 20))
     
     # -- Card 2: Directories --
     card2 = ctk.CTkFrame(main_frame, corner_radius=6, fg_color="#252526", border_width=1, border_color="#3E3E42")
@@ -590,28 +601,17 @@ if __name__ == "__main__":
     ctk.CTkLabel(card2, text="Directories", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=3, sticky="w", padx=25, pady=(15, 10))
     
     folder_var = tk.StringVar()
-    orig_var = tk.StringVar()
     out_var = tk.StringVar()
     
-    def select_orig():
-        orig = filedialog.askopenfilename(title="Select Original Song", filetypes=[("Audio", "*.mp3 *.wav *.flac")])
-        if orig:
-            orig_var.set(orig)
-
-    ctk.CTkLabel(card2, text="Original Track", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card2, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Optional (improves Shazam)").grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
-    btn_orig = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_orig)
-    btn_orig.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
-    
-    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
+    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
+    ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
     btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_folder)
-    btn_folder.grid(row=2, column=2, padx=(0, 25), pady=(0, 10))
+    btn_folder.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card2, text="Output Zip Dir", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
+    ctk.CTkLabel(card2, text="Output Zip Dir", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
     btn_out = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_out_dir)
-    btn_out.grid(row=3, column=2, padx=(0, 25), pady=(0, 20))
+    btn_out.grid(row=2, column=2, padx=(0, 25), pady=(0, 20))
     
     # -- Action Area --
     btn_package = ctk.CTkButton(main_frame, text="Start Packaging", command=start_packaging, font=ctk.CTkFont(size=14, weight="normal"), height=40, corner_radius=4, fg_color="#0E639C", text_color="#FFFFFF", hover_color="#1177BB")
