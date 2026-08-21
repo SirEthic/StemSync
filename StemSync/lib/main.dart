@@ -112,6 +112,9 @@ class MixerScreen extends StatefulWidget {
 }
 
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  bool _showSplash = true;
+  double _splashOpacity = 1.0;
+  double _splashScale = 0.9;
   bool _isLoading = false;
   DateTime? _lastBackPressTime;
   
@@ -2049,6 +2052,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _loadLibrary();
       _initBeep();
     }
+    
+    // Trigger animation
+    if (mounted) {
+        setState(() => _splashScale = 1.0);
+    }
+    
+    // Hold splash screen for a professional feel
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (mounted) {
+       setState(() => _splashOpacity = 0.0);
+       await Future.delayed(const Duration(milliseconds: 500));
+       if (mounted) {
+          setState(() => _showSplash = false);
+       }
+    }
   }
 
   @override
@@ -2150,7 +2168,41 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         
         SystemNavigator.pop();
       },
-      child: _buildContent(context),
+      child: Stack(
+        children: [
+          _buildContent(context),
+          if (_showSplash)
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: _splashOpacity,
+                duration: const Duration(milliseconds: 500),
+                child: Container(
+                  color: const Color(0xFF000000), // Match scaffold background
+                  child: Center(
+                    child: AnimatedScale(
+                      scale: _splashScale,
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOutCubic,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Image.asset('assets/icon.jpg', width: 120, height: 120, fit: BoxFit.cover),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text('STEMSYNC', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 10)),
+                          const SizedBox(height: 8),
+                          Text('PRO AUDIO', style: TextStyle(color: Colors.tealAccent.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 4)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
