@@ -2000,12 +2000,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       );
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) _closeMixer();
-      },
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.keyboard_arrow_down), 
@@ -2462,7 +2457,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           const SizedBox(height: 32),
         ],
       ),
-    ));
+    );
   }
 
   Widget _buildBottomToggleBtn(IconData icon, bool active, VoidCallback onTap) {
