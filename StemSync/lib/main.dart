@@ -910,6 +910,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
       _stemsBus = SoLoud.instance.createMixingBus(name: 'stems');
       _stemsBus!.playOnEngine();
+      _stemsBus!.filters.limiterFilter.activate(); // Prevent digital clipping from overlapping FFT windows
       // Pitch shift filter is activated lazily in _applyPitchAndTempo only when needed.
 
       for (var audioFile in audioFiles) {
@@ -1420,7 +1421,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   Future<void> _initializeApp() async {
     try {
-      await SoLoud.instance.init(bufferSize: 4096);
+      await SoLoud.instance.init(
+        bufferSize: Platform.isAndroid ? 8192 : 4096,
+        lowLatency: Platform.isAndroid ? false : true,
+      );
     } catch (e) {
       debugPrint("Initial SoLoud init failed: $e");
       try {
@@ -1428,7 +1432,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 500));
       try {
-        await SoLoud.instance.init(bufferSize: 4096);
+        await SoLoud.instance.init(
+          bufferSize: Platform.isAndroid ? 8192 : 4096,
+          lowLatency: Platform.isAndroid ? false : true,
+        );
       } catch (e2) {
         debugPrint("SoLoud completely failed to init: $e2");
       }
