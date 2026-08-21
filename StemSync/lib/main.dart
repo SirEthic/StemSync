@@ -271,21 +271,30 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     child: ListView(
                       shrinkWrap: true,
                       padding: const EdgeInsets.only(bottom: 16),
-                      children: filteredKeys.map((pName) => ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                        title: Text(pName, style: const TextStyle(fontSize: 16)),
-                        trailing: const Icon(Icons.add_circle_outline, color: Colors.tealAccent),
-                        onTap: () {
-                          setState(() {
-                            if (!_playlists[pName]!.contains(dirName)) {
-                              _playlists[pName]!.add(dirName);
+                      children: filteredKeys.map((pName) {
+                        final bool isInPlaylist = _playlists[pName]!.contains(dirName);
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                          title: Text(pName, style: const TextStyle(fontSize: 16)),
+                          trailing: Icon(
+                            isInPlaylist ? Icons.remove_circle_outline : Icons.add_circle_outline, 
+                            color: isInPlaylist ? Colors.redAccent : Colors.tealAccent
+                          ),
+                          onTap: () {
+                            setState(() {
+                              if (isInPlaylist) {
+                                _playlists[pName]!.remove(dirName);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Removed from $pName")));
+                              } else {
+                                _playlists[pName]!.add(dirName);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
+                              }
                               _savePlaylists();
-                            }
-                          });
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
-                        },
-                      )).toList(),
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                 ],
@@ -1781,42 +1790,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     leading: leadingWidget,
                     title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text("Remove Song"),
-                                content: Text("Remove '$name' from this setlist?"),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel", style: TextStyle(color: Colors.white))),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      setState(() {
-                                        _playlists[_activePlaylist!]!.removeAt(index);
-                                        _savePlaylists();
-                                      });
-                                    }, 
-                                    child: const Text("Remove", style: TextStyle(color: Colors.redAccent))
-                                  ),
-                                ]
-                              )
-                            );
-                          },
-                        ),
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Padding(
-                            padding: EdgeInsets.only(left: 8.0, right: 8.0),
-                            child: Icon(Icons.drag_handle, color: Colors.grey),
-                          ),
-                        ),
-                      ],
+                    trailing: ReorderableDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 8.0, right: 8.0),
+                        child: Icon(Icons.drag_handle, color: Colors.grey),
+                      ),
                     ),
                     onTap: () => _openSong(dir),
                   );
