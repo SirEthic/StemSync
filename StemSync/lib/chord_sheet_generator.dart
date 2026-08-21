@@ -71,7 +71,7 @@ class ChordSheetGenerator {
       if (rawTime == null || rawChord == null) continue;
 
       final String chord = rawChord.toString().trim();
-      if (chord.isEmpty || chord == 'N' || chord == 'N/C') continue;
+      if (chord.isEmpty || chord == 'N' || chord == 'N/C' || chord == 'N.C.') continue;
 
       final double start = (rawTime as num).toDouble();
       final int mi = (start / spm).floor();
@@ -132,10 +132,11 @@ class ChordSheetGenerator {
 
       // ── Header ────────────────────────────────────────────────────────
       if (isFirst) {
-        // Title centred on its own line
+        // Title centred on its own line, clamped to left margin for long titles
         final double titleSize = 18.0;
         final double titleW = title.length * titleSize * 0.55;
-        txt(title, (_pw - titleW) / 2, _margin + 18, titleSize);
+        final double titleX = ((_pw - titleW) / 2).clamp(_margin, _pw - _margin);
+        txt(title, titleX, _margin + 18, titleSize);
         // Tempo on the line below, left-aligned
         txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 38, 10);
       }
@@ -222,7 +223,7 @@ class ChordSheetGenerator {
       wl('$id 0 obj');
     }
 
-    void endObj() => wl('endobj\n');
+    void endObj() => wl('endobj');
 
     // Header
     wl('%PDF-1.4');
