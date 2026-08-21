@@ -1897,21 +1897,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             );
                           },
                         ),
-                    Positioned(
-                      bottom: 24,
-                      right: 24,
-                      child: FloatingActionButton.extended(
-                        onPressed: _createPlaylist,
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        icon: const Icon(Icons.add),
-                        label: const Text("New Setlist", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
         bottomNavigationBar: BottomNavigationBar(
@@ -1925,15 +1912,25 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             BottomNavigationBarItem(icon: Icon(Icons.queue_music), label: "Setlists"),
           ],
         ),
-        floatingActionButton: _libraryTabIndex == 0 ? FloatingActionButton.extended(
-          onPressed: _loadZipFile,
-          elevation: 8,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          icon: const Icon(Icons.library_add),
-          label: const Text("Import Song", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          backgroundColor: Colors.teal,
-          foregroundColor: Colors.white,
-        ) : null,
+        floatingActionButton: _libraryTabIndex == 0 
+          ? FloatingActionButton.extended(
+              onPressed: _loadZipFile,
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              icon: const Icon(Icons.library_add),
+              label: const Text("Import Song", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ) 
+          : FloatingActionButton.extended(
+              onPressed: _createPlaylist,
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              icon: const Icon(Icons.add),
+              label: const Text("New Setlist", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
       );
     }
 
