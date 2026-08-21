@@ -1531,17 +1531,40 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 itemBuilder: (context, index) {
                   final dir = _savedSongs[index];
                   String name = dir.path.split(Platform.pathSeparator).last;
+                  String subtitleText = "";
                   final metaFile = File('${dir.path}/song_metadata.json');
                   if (metaFile.existsSync()) {
                     try {
                       final meta = jsonDecode(metaFile.readAsStringSync());
                       name = meta['song_name'] ?? name;
+                      
+                      List<String> details = [];
+                      if (meta['artist'] != null && meta['artist'].toString().trim().isNotEmpty && meta['artist'].toString().trim() != "Unknown Artist") {
+                        details.add(meta['artist'].toString());
+                      }
+                      if (meta['genre'] != null && meta['genre'].toString().trim().isNotEmpty && meta['genre'].toString().trim() != "Unknown Genre") {
+                        details.add(meta['genre'].toString());
+                      }
+                      if (meta['release_year'] != null && meta['release_year'].toString().trim().isNotEmpty) {
+                        details.add(meta['release_year'].toString());
+                      }
+                      subtitleText = details.join(' • ');
                     } catch (_) {}
                   }
+                  
+                  final coverFile = File('${dir.path}/cover.jpg');
+                  Widget leadingWidget = coverFile.existsSync()
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(coverFile, width: 50, height: 50, fit: BoxFit.cover),
+                        )
+                      : const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white));
+
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.music_note, color: Colors.white)),
+                    leading: leadingWidget,
                     title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    subtitle: subtitleText.isNotEmpty ? Text(subtitleText, style: const TextStyle(color: Colors.grey)) : null,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

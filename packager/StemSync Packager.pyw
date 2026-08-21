@@ -321,10 +321,48 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         first_beat -= interval
     first_beat += 0.045
     
+    # --- Fetch Extended iTunes Metadata ---
+    print("Fetching extended metadata and album cover...")
+    album_name = "Unknown Album"
+    genre = "Unknown Genre"
+    release_year = ""
+    has_cover = False
+    
+    import urllib.request
+    import urllib.parse
+    try:
+        query = urllib.parse.quote(f"{song_name} {artist_name}".strip())
+        url = f"https://itunes.apple.com/search?term={query}&entity=song&limit=1"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            if data['resultCount'] > 0:
+                track = data['results'][0]
+                album_name = track.get('collectionName', album_name)
+                genre = track.get('primaryGenreName', genre)
+                if 'releaseDate' in track:
+                    release_year = track['releaseDate'][:4]
+                
+                # Download optimized Cover Art (400x400)
+                cover_url = track.get('artworkUrl100', '').replace('100x100bb', '400x400bb')
+                if cover_url:
+                    cover_req = urllib.request.Request(cover_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(cover_req, timeout=5) as cover_res:
+                        with open(stem_folder / "cover.jpg", "wb") as cf:
+                            cf.write(cover_res.read())
+                    has_cover = True
+                    print("Downloaded album cover.")
+    except Exception as e:
+        print(f"Warning: Extended metadata fetch failed: {e}")
+
     # Create the metadata JSON
     metadata = {
         "song_name": song_name,
         "artist": artist_name,
+        "album": album_name,
+        "genre": genre,
+        "release_year": release_year,
+        "has_cover": has_cover,
         "tempo_bpm": bpm,
         "first_beat": first_beat,
         "key": best_key,
@@ -477,8 +515,10 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     print(f"Creating {zip_filename.name}...")
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(metadata_path, arcname="song_metadata.json")
-        if (stem_folder / "lyrics.lrc").exists():
-            zipf.write(stem_folder / "lyrics.lrc", arcname="lyrics.lrc")
+        if lrc_path.exists():
+            zipf.write(lrc_path, arcname="lyrics.lrc")
+        if (stem_folder / "cover.jpg").exists():
+            zipf.write(stem_folder / "cover.jpg", arcname="cover.jpg")
         for audio_file in audio_files:
             zipf.write(audio_file, arcname=audio_file.name)
             
