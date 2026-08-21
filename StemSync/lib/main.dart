@@ -482,6 +482,42 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _beepSource = await SoLoud.instance.loadFile(beepFile.path);
   }
 
+  void _showMixerOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text("Mixer Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.onetwothree, color: Colors.tealAccent),
+                title: const Text('Count In Options', style: TextStyle(color: Colors.tealAccent)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCountInMenu();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share, color: Colors.blueAccent),
+                title: const Text('Export & Share', style: TextStyle(color: Colors.blueAccent)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showExportMenu();
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   void _showExportMenu() {
     showModalBottomSheet(
       context: context,
@@ -2291,16 +2327,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         ),
           centerTitle: true,
           actions: [
-            PopupMenuButton<String>(
+            IconButton(
               icon: const Icon(Icons.more_vert),
-              onSelected: (val) {
-                if (val == 'count_in') _showCountInMenu();
-                if (val == 'export') _showExportMenu();
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'count_in', child: Text("Count In Options")),
-                const PopupMenuItem(value: 'export', child: Text("Export & Share")),
-              ],
+              onPressed: _showMixerOptionsMenu,
             ),
           ],
         ),
