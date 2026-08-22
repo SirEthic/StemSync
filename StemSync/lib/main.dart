@@ -450,6 +450,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   List<SoundHandle> _countInHandles = [];
   AudioSource? _beepSource;
   bool _isSongLooping = true;
+  bool _simplifyChords = false;
   
   // Bouncing State
   bool _isBouncing = false;
@@ -591,25 +592,46 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ],
               StatefulBuilder(
                 builder: (context, setModalState) {
-                  return ListTile(
-                    contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                    leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.white),
-                    title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.white)),
-                    trailing: Switch(
-                      value: _isSongLooping,
-                      activeColor: Colors.tealAccent,
-                      onChanged: (val) {
-                        setModalState(() { _isSongLooping = val; });
-                        setState(() { _isSongLooping = val; });
-                        
-                      },
-                    ),
-                    onTap: () {
-                      bool val = !_isSongLooping;
-                      setModalState(() { _isSongLooping = val; });
-                      setState(() { _isSongLooping = val; });
-                      
-                    },
+                  return Column(
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                        leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.white),
+                        title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.white)),
+                        trailing: Switch(
+                          value: _isSongLooping,
+                          activeColor: Colors.tealAccent,
+                          onChanged: (val) {
+                            setModalState(() { _isSongLooping = val; });
+                            setState(() { _isSongLooping = val; });
+                          },
+                        ),
+                        onTap: () {
+                          bool val = !_isSongLooping;
+                          setModalState(() { _isSongLooping = val; });
+                          setState(() { _isSongLooping = val; });
+                        },
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                        leading: Icon(Icons.auto_fix_high, color: _simplifyChords ? Colors.tealAccent : Colors.white),
+                        title: const Text('Simplified Chords', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Strips 7ths and extensions', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        trailing: Switch(
+                          value: _simplifyChords,
+                          activeColor: Colors.tealAccent,
+                          onChanged: (val) {
+                            setModalState(() { _simplifyChords = val; });
+                            setState(() { _simplifyChords = val; });
+                          },
+                        ),
+                        onTap: () {
+                          bool val = !_simplifyChords;
+                          setModalState(() { _simplifyChords = val; });
+                          setState(() { _simplifyChords = val; });
+                        },
+                      ),
+                    ],
                   );
                 }
               ),
@@ -794,8 +816,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
     try {
       final title = _songMetadata != null ? (_songMetadata!['song_name'] ?? _activeSongDir!.path.split(Platform.pathSeparator).last) : "Chord Sheet";
-      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, _chords, _baseTempo);
       
+      // Process chords before generating PDF to respect Pitch Shifting and Simplified Chords toggle
+      final processedChords = _chords.map((c) {
+        return {
+          'time': c['time'],
+          'chord': _transposeChord(c['chord'] as String, _pitchShiftSemitones.toInt())
+        };
+      }).toList();
+      
+      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, processedChords, _baseTempo);
       if (file != null) {
         final xFile = XFile(file.path, mimeType: 'application/pdf');
         await Share.shareXFiles([xFile], text: "$title - Chord Sheet");
@@ -1286,27 +1316,32 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   String _transposeChord(String chord, int semitones) {
     if (chord == "N/C" || chord.isEmpty) return chord;
-    String root = chord;
-    String quality = "";
     
-    if (chord.contains(" ")) {
-      List<String> parts = chord.split(" ");
-      root = parts[0];
-      quality = parts[1];
-    } else {
-      bool isMinor = chord.endsWith("m");
-      root = isMinor ? chord.substring(0, chord.length - 1) : chord;
-      quality = isMinor ? "Minor" : "Major";
-    }
+    // Dynamically split the root note (e.g. C#) from any complex extension (e.g. maj7, sus4, m7)
+    final match = RegExp(r'^([A-G][#b]?)(.*)$').firstMatch(chord);
+    if (match == null) return chord;
+    
+    String root = match.group(1)!;
+    String extension = match.group(2)!;
     
     int idx = _chromaticScale.indexOf(root);
     if (idx == -1) return chord;
     
     int newIdx = (idx + semitones) % 12;
     if (newIdx < 0) newIdx += 12;
+    String transposedRoot = _chromaticScale[newIdx];
     
-    String suffix = quality == "Minor" ? "m" : "";
-    return "${_chromaticScale[newIdx]}$suffix";
+    if (_simplifyChords) {
+        if (extension == 'maj7') extension = '';
+        else if (extension == 'sus2') extension = '';
+        else if (extension == 'sus4') extension = '';
+        else if (extension == 'aug') extension = '';
+        else if (extension == 'm7') extension = 'm';
+        else if (extension == 'dim') extension = 'm';
+        else if (extension == '7') extension = '';
+    }
+    
+    return "$transposedRoot$extension";
   }
 
 
