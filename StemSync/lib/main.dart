@@ -2691,15 +2691,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                             
                                             if (!showText) return const SizedBox.shrink();
                                             
-                                            return Text(
-                                              _transposeChord(_chords[chordIdx]['chord'] as String, _pitchShiftSemitones.toInt()),
-                                              style: TextStyle(
-                                                color: isActive 
-                                                  ? (isGrey ? Colors.black54 : Colors.black) 
-                                                  : (isGrey ? Colors.grey[600] : Colors.white),
-                                                fontSize: isActive ? 24 : 18,
-                                                fontWeight: isActive ? FontWeight.bold : FontWeight.normal
-                                              )
+                                            return Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  _transposeChord(_chords[chordIdx]['chord'] as String, _pitchShiftSemitones.toInt()),
+                                                  style: TextStyle(
+                                                    color: isActive 
+                                                      ? (isGrey ? Colors.black54 : Colors.black) 
+                                                      : (isGrey ? Colors.grey[600] : Colors.white),
+                                                    fontSize: isActive ? 24 : 18,
+                                                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal
+                                                  )
+                                                ),
+                                              ),
                                             );
                                           }
                                         )
