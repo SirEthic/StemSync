@@ -313,6 +313,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void _showLibrarySongOptions(Directory dir, String dirName) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1A1A1A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
@@ -560,6 +561,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void _showMixerOptionsMenu() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1A1A1A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
@@ -676,6 +678,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void _showExportMenu() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1A1A1A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
