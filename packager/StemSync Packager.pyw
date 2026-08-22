@@ -289,10 +289,35 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         chord_idx = np.argmax(np.dot(chord_templates, frame_chroma)) if np.max(frame_chroma) > 0.05 else -1
         chord_preds.append(chord_idx)
         
-    # The raw beat-averaged predictions are mathematically pure. 
-    # Hysteresis and mode filters have been completely removed so the app 
-    # faithfully captures rapid 1-beat passing chords exactly as they are played.
-        
+    if len(chord_preds) > 8:
+        # Pass 1: 3-beat rolling deterministic mode to smooth out 1-beat rapid flicker / passing notes
+        smoothed_preds = []
+        for i in range(len(chord_preds)):
+            start = max(0, i - 1)
+            end = min(len(chord_preds), i + 2)
+            window = chord_preds[start:end]
+            counts = {}
+            for c in window: counts[c] = counts.get(c, 0) + 1
+            # Sort by count, tie-break by favoring the previous smoothed chord for maximum stability
+            prev = smoothed_preds[-1] if smoothed_preds else -1
+            best_chord = sorted(counts.keys(), key=lambda c: (counts[c], c == prev), reverse=True)[0]
+            smoothed_preds.append(best_chord)
+            
+        # Pass 2: Hysteresis filter (Requires 2 consecutive beats to change UI chords)
+        final_preds = []
+        current_chord = smoothed_preds[0]
+        for i in range(len(smoothed_preds)):
+            if smoothed_preds[i] == current_chord:
+                final_preds.append(current_chord)
+            else:
+                ahead = smoothed_preds[i : i + 2]
+                if len(ahead) == 2 and ahead.count(smoothed_preds[i]) == 2:
+                    current_chord = smoothed_preds[i]
+                    final_preds.append(current_chord)
+                else:
+                    final_preds.append(current_chord)
+                    
+        chord_preds = final_preds
     for j in range(len(beat_times)):
         chord_idx = chord_preds[j]
         best_chord = chord_names[chord_idx] if chord_idx >= 0 else "N/C"
