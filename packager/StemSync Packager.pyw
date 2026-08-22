@@ -204,17 +204,18 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 fallback = f
                 break
         y_harm, sr_harm = librosa.load(fallback, sr=22050)
-    print("Estimating tuning and extracting CENS chromagram...")
-    tuning = librosa.estimate_tuning(y=y_harm, sr=sr_harm)
-    # CENS (Chroma Energy Normalized Statistics) is highly robust to overtones and dynamics compared to raw CQT
-    chroma = librosa.feature.chroma_cens(y=y_harm, sr=sr_harm, tuning=tuning)
+    print("Extracting dual-stage chromagrams (Raw CQT + CENS)...")
+    # Raw CQT preserves volume energy, making it vastly superior for global Key Detection
+    chroma_raw = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
+    # CENS normalizes and smooths data, making it vastly superior for frame-by-frame Chord Detection
+    chroma = librosa.feature.chroma_cens(C=chroma_raw)
     
     maj_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
     min_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
     maj_profile = maj_profile / np.linalg.norm(maj_profile)
     min_profile = min_profile / np.linalg.norm(min_profile)
     
-    chroma_sum = np.sum(chroma, axis=1)
+    chroma_sum = np.sum(chroma_raw, axis=1)
     if np.linalg.norm(chroma_sum) > 0:
         chroma_sum = chroma_sum / np.linalg.norm(chroma_sum)
     
