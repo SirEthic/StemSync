@@ -76,6 +76,7 @@ flutter:
     - assets/splash.png
     - assets/bass_guitar.svg
     - assets/bass_icon.png
+    - assets/guitar_icon.png
     - assets/fonts/NotoSansBengali-Regular.ttf
     - assets/fonts/NotoSansDevanagari-Regular.ttf
   #   - images/a_dot_ham.jpeg

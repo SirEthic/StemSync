@@ -1404,7 +1404,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     if (lower.contains('vocal')) return const FaIcon(FontAwesomeIcons.microphoneLines, color: Colors.white, size: 22);
     if (lower.contains('drum')) return const FaIcon(FontAwesomeIcons.drum, color: Colors.white, size: 22);
     if (lower.contains('bass')) return Image.asset('assets/bass_icon.png', width: 22, height: 22);
-    if (lower.contains('guitar')) return const FaIcon(FontAwesomeIcons.guitar, color: Colors.white, size: 22);
+    if (lower.contains('guitar')) return Image.asset('assets/guitar_icon.png', width: 22, height: 22);
     if (lower.contains('piano')) return const Icon(Icons.piano, color: Colors.white, size: 24);
     return const FaIcon(FontAwesomeIcons.music, color: Colors.white, size: 22);
   }
