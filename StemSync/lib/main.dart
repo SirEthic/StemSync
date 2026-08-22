@@ -457,6 +457,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   
   // Auto Save State
   Timer? _autoSaveTimer;
+  Timer? _scrubGraceTimer;
   String _lastSavedState = "";
   
   
@@ -2206,6 +2207,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _ticker.dispose();
     _autoSaveTimer?.cancel();
     _countInTimer?.cancel();
+    _scrubGraceTimer?.cancel();
     for (var t in _tracks) {
       SoLoud.instance.stop(t.handle);
       SoLoud.instance.disposeSource(t.source);
@@ -2630,9 +2632,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   NotificationListener<ScrollNotification>(
                     onNotification: (ScrollNotification scrollInfo) {
                       if (scrollInfo is ScrollStartNotification && scrollInfo.dragDetails != null) {
+                        _scrubGraceTimer?.cancel();
                         _isScrubbingChords = true;
                       } else if (scrollInfo is ScrollEndNotification && _isScrubbingChords) {
-                        _isScrubbingChords = false;
+                        _scrubGraceTimer?.cancel();
+                        _scrubGraceTimer = Timer(const Duration(seconds: 3), () {
+                          if (mounted) setState(() => _isScrubbingChords = false);
+                        });
                       }
                       return false;
                     },
