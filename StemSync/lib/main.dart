@@ -2794,8 +2794,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     children: [
                       SizedBox(
                         width: 50,
+                        height: 60,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _getIconForTrack(track.name),
                             Padding(
