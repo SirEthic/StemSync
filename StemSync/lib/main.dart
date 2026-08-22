@@ -2626,22 +2626,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   NotificationListener<ScrollNotification>(
                     onNotification: (ScrollNotification scrollInfo) {
                       if (scrollInfo is ScrollStartNotification && scrollInfo.dragDetails != null) {
-                        _cancelCountIn();
-                        setState(() => _isScrubbingChords = true);
-                      } else if (scrollInfo is ScrollUpdateNotification && _isScrubbingChords) {
-                        double newPos = scrollInfo.metrics.pixels / 160.0;
-                        newPos = max(0.0, min(newPos, _songLength));
-                        _updateActiveChord(newPos);
-                        _updateActiveSection(newPos);
-                        _currentPositionNotifier.value = newPos;
+                        _isScrubbingChords = true;
                       } else if (scrollInfo is ScrollEndNotification && _isScrubbingChords) {
                         _isScrubbingChords = false;
-                        double newPos = scrollInfo.metrics.pixels / 160.0;
-                        newPos = max(0.0, min(newPos, _songLength));
-                        for (var t in _tracks) SoLoud.instance.seek(t.handle, Duration(milliseconds: (newPos * 1000).toInt()));
-                        for (var t in _metronomeTracks.values) SoLoud.instance.seek(t.handle, Duration(milliseconds: (newPos * 1000).toInt()));
                       }
-                      return true;
+                      return false;
                     },
                       child: SizedBox(
                         height: 60,
