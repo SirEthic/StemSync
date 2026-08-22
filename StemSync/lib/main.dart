@@ -1401,7 +1401,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   Widget _getIconForTrack(String filename) {
     final lower = filename.toLowerCase();
-    if (lower.contains('vocal')) return const FaIcon(FontAwesomeIcons.microphoneLines, color: Colors.white, size: 22);
+    if (lower.contains('vocal')) return const FaIcon(FontAwesomeIcons.microphone, color: Colors.white, size: 22);
     if (lower.contains('drum')) return const FaIcon(FontAwesomeIcons.drum, color: Colors.white, size: 22);
     if (lower.contains('bass')) return Image.asset('assets/bass_icon.png', height: 38, color: Colors.white);
     if (lower.contains('guitar')) return Image.asset('assets/guitar_icon.png', height: 32, color: Colors.white);
