@@ -74,7 +74,6 @@ flutter:
     - assets/tick.wav
     - assets/icon.jpg
     - assets/splash.png
-    - assets/bass_guitar.svg
     - assets/bass_icon.png
     - assets/guitar_icon.png
     - assets/fonts/NotoSansBengali-Regular.ttf
