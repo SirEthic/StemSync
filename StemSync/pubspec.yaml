@@ -44,6 +44,7 @@ dependencies:
   share_plus: ^13.3.0
   flutter_native_splash: ^2.4.7
   pdf: ^3.11.1
+  flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ flutter:
     - assets/tick.wav
     - assets/icon.jpg
     - assets/splash.png
+    - assets/bass_guitar.svg
     - assets/fonts/NotoSansBengali-Regular.ttf
     - assets/fonts/NotoSansDevanagari-Regular.ttf
   #   - images/a_dot_ham.jpeg
