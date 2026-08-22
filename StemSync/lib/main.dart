@@ -1383,7 +1383,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _updateActiveSection(start);
     _currentPositionNotifier.value = start;
     if (_chordScrollController.hasClients) {
-      _chordScrollController.jumpTo(start * 160.0);
+      _chordScrollController.animateTo(
+        start * 160.0,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
