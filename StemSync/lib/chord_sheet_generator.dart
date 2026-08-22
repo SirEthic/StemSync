@@ -1,20 +1,17 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
-/// Generates a rhythm-slash chord lead sheet as a valid PDF 1.4 file.
-/// Pure Dart — no external package required.
 class ChordSheetGenerator {
-  // A4 page in PDF points (1 pt = 1/72 inch)
-  static const double _pw = 595.28;
-  static const double _ph = 841.89;
   static const double _margin = 45.0;
   static const int _measPerRow = 4;
-  static const double _rowH = 86.0; // vertical space per row (increased for lyrics)
-  static const double _staffLineGap = 5.5; // gap between each of 5 staff lines
+  static const double _rowH = 86.0;
+  static const double _staffLineGap = 5.5;
   static const double _staffH = _staffLineGap * 4;
 
-  // ── Public entry-point ────────────────────────────────────────────────────
   static Future<File?> generateAndSaveChordSheet(
     String title,
     String subtitle,
@@ -24,19 +21,177 @@ class ChordSheetGenerator {
   ) async {
     if (chords.isEmpty) return null;
 
-    // 1. Quantise chords into a measure/beat grid
     final measures = _buildMeasures(chords, tempoBpm);
     if (measures.isEmpty) return null;
-
     final lyricMeasures = _buildLyricMeasures(lyrics, tempoBpm, measures.length);
 
-    // 2. Build one content-stream string per page
-    final pages = _buildPageStreams(title, subtitle, tempoBpm, measures, lyricMeasures);
+    // Load fonts for Hindi and Assamese/Bengali support
+    final devanagariData = await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf');
+    final bengaliData = await rootBundle.load('assets/fonts/NotoSansBengali-Regular.ttf');
+    final ttfDeva = pw.Font.ttf(devanagariData);
+    final ttfBengali = pw.Font.ttf(bengaliData);
+    final fontFallback = [ttfDeva, ttfBengali];
 
-    // 3. Serialise to PDF bytes
-    final bytes = _serialisePdf(pages);
+    final pdf = pw.Document();
 
-    // 4. Write to temp file — named after the song
+    final double usableW = PdfPageFormat.a4.width - _margin * 2;
+    final double measW = usableW / _measPerRow;
+    final double beatW = measW / 4;
+    final int totalRows = (measures.length / _measPerRow).ceil();
+
+    const double headerH = 52.0;
+    final int rowsFirstPage = ((PdfPageFormat.a4.height - _margin * 2 - headerH) / _rowH).floor().clamp(1, 9999);
+    final int rowsOtherPage = ((PdfPageFormat.a4.height - _margin * 2) / _rowH).floor().clamp(1, 9999);
+
+    int row = 0;
+    while (row < totalRows) {
+      final bool isFirst = row == 0;
+      final int rowsThisPage = isFirst ? rowsFirstPage : rowsOtherPage;
+      final int lastRow = (row + rowsThisPage).clamp(0, totalRows);
+      
+      final startRow = row;
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(_margin),
+          build: (pw.Context context) {
+            final children = <pw.Widget>[];
+
+            // Add Text elements
+            if (isFirst) {
+              children.add(
+                pw.Positioned(
+                  top: 18,
+                  left: 0,
+                  right: 0,
+                  child: pw.Center(
+                    child: pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, fontFallback: fontFallback)),
+                  )
+                )
+              );
+              children.add(
+                pw.Positioned(
+                  top: 38,
+                  left: 0,
+                  child: pw.Text('q = ${tempoBpm.round()} BPM', style: pw.TextStyle(fontSize: 10, fontFallback: fontFallback))
+                )
+              );
+              if (subtitle.isNotEmpty) {
+                children.add(
+                  pw.Positioned(
+                    top: 38,
+                    right: 0,
+                    child: pw.Text(subtitle, style: pw.TextStyle(fontSize: 10, fontFallback: fontFallback))
+                  )
+                );
+              }
+            }
+
+            final double topOfRows = isFirst ? headerH : 0;
+
+            for (int r = startRow; r < lastRow; r++) {
+              final double rowTop = topOfRows + (r - startRow) * _rowH;
+              final double staffTop = rowTop + 24;
+
+              final int firstMeas = r * _measPerRow;
+              children.add(
+                pw.Positioned(
+                  top: staffTop + 5,
+                  left: -18,
+                  child: pw.Text('${firstMeas + 1}', style: const pw.TextStyle(fontSize: 7))
+                )
+              );
+
+              for (int m = 0; m < _measPerRow; m++) {
+                final int mi = r * _measPerRow + m;
+                if (mi >= measures.length) break;
+
+                final double mLeft = m * measW;
+
+                for (int b = 0; b < 4; b++) {
+                  final double cx = mLeft + (b + 0.5) * beatW;
+
+                  final String chord = measures[mi][b];
+                  if (chord.isNotEmpty) {
+                    children.add(
+                      pw.Positioned(
+                        top: staffTop - 14,
+                        left: cx - (chord.length * 5.5) / 2, // Approximate centering
+                        child: pw.Text(chord, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, fontFallback: fontFallback))
+                      )
+                    );
+                  }
+
+                  final String lyric = lyricMeasures[mi][b];
+                  if (lyric.isNotEmpty) {
+                    children.add(
+                      pw.Positioned(
+                        top: staffTop + _staffH + 12,
+                        left: cx - 5,
+                        child: pw.Text(lyric, style: pw.TextStyle(fontSize: 8, fontFallback: fontFallback), maxLines: 1)
+                      )
+                    );
+                  }
+                }
+              }
+            }
+
+            // Draw lines using CustomPaint
+            children.insert(0, pw.CustomPaint(
+              size: const PdfPoint(double.infinity, double.infinity),
+              painter: (PdfGraphics canvas, PdfPoint size) {
+                // In pw.CustomPaint, (0,0) is bottom-left. We need to invert Y to match top-down.
+                double y(double tdY) => size.y - tdY;
+                
+                void drawLine(double x1, double td1, double x2, double td2, double w) {
+                  canvas.setStrokeColor(PdfColors.black);
+                  canvas.setLineWidth(w);
+                  canvas.drawLine(x1, y(td1), x2, y(td2));
+                  canvas.strokePath();
+                }
+
+                for (int r = startRow; r < lastRow; r++) {
+                  final double rowTop = topOfRows + (r - startRow) * _rowH;
+                  final double staffTop = rowTop + 24;
+
+                  for (int li = 0; li < 5; li++) {
+                    final double ly = staffTop + li * _staffLineGap;
+                    drawLine(0, ly, usableW, ly, 0.5);
+                  }
+
+                  drawLine(0, staffTop, 0, staffTop + _staffH, 1.0);
+                  drawLine(usableW, staffTop, usableW, staffTop + _staffH, 1.0);
+
+                  for (int m = 0; m < _measPerRow; m++) {
+                    final int mi = r * _measPerRow + m;
+                    if (mi >= measures.length) break;
+
+                    final double mLeft = m * measW;
+
+                    if (m > 0) {
+                      drawLine(mLeft, staffTop, mLeft, staffTop + _staffH, 0.8);
+                    }
+
+                    for (int b = 0; b < 4; b++) {
+                      final double cx = mLeft + (b + 0.5) * beatW;
+                      drawLine(cx - 5, staffTop + _staffH - 3, cx + 5, staffTop + 3, 1.8);
+                    }
+                  }
+                }
+              },
+            ));
+
+            return pw.Stack(children: children);
+          },
+        ),
+      );
+      
+      row = lastRow;
+    }
+
+    final bytes = await pdf.save();
+    
     final dir = await getTemporaryDirectory();
     final safeName = title
         .replaceAll(RegExp(r'[^\w\s\-]'), '')
@@ -48,11 +203,10 @@ class ChordSheetGenerator {
     return file;
   }
 
-  // ── Step 1 – Quantise ─────────────────────────────────────────────────────
   static List<List<String>> _buildMeasures(
       List<dynamic> chords, double tempoBpm) {
-    final double spb = 60.0 / tempoBpm; // seconds per beat
-    final double spm = spb * 4; // seconds per measure
+    final double spb = 60.0 / tempoBpm;
+    final double spm = spb * 4;
 
     double lastTime = 0;
     for (var c in chords) {
@@ -117,16 +271,14 @@ class ChordSheetGenerator {
       final text = l['text'];
       if (rawTime == null || text == null) continue;
 
-      // Clean the text to prevent PDF rendering issues with unicode or enhanced LRC tags
-      String cleanText = text.toString().replaceAll(RegExp(r'<[^>]*>'), '');
-      cleanText = cleanText.replaceAll(RegExp(r'[^\x20-\x7E]'), '').trim();
+      // We no longer strip unicode characters!
+      String cleanText = text.toString().replaceAll(RegExp(r'<[^>]*>'), '').trim();
       if (cleanText.isEmpty) continue;
 
       final double start = (rawTime as num).toDouble();
       final int mi = (start / spm).floor();
 
       if (mi >= 0 && mi < totalMeasures) {
-        // Group all lyrics for this measure into the first beat slot so they print as a continuous natural sentence
         if (measures[mi][0].isEmpty) {
           measures[mi][0] = cleanText;
         } else {
@@ -136,220 +288,4 @@ class ChordSheetGenerator {
     }
     return measures;
   }
-
-  // ── Step 2 – Build page content streams ───────────────────────────────────
-  static List<String> _buildPageStreams(
-      String title, String subtitle, double tempoBpm, List<List<String>> measures, List<List<String>> lyricMeasures) {
-    final double usableW = _pw - _margin * 2;
-    final double measW = usableW / _measPerRow;
-    final double beatW = measW / 4;
-    final int totalRows = (measures.length / _measPerRow).ceil();
-
-    // First page has a header; subsequent pages start right away
-    const double headerH = 52.0;
-    final int rowsFirstPage =
-        ((_ph - _margin * 2 - headerH) / _rowH).floor().clamp(1, 9999);
-    final int rowsOtherPage =
-        ((_ph - _margin * 2) / _rowH).floor().clamp(1, 9999);
-
-    final List<String> pageStreams = [];
-    int row = 0;
-
-    while (row < totalRows) {
-      final bool isFirst = pageStreams.isEmpty;
-      final int rowsThisPage = isFirst ? rowsFirstPage : rowsOtherPage;
-      final int lastRow = (row + rowsThisPage).clamp(0, totalRows);
-
-      final sb = StringBuffer();
-
-      // PDF Y is bottom-up; helper flips our top-down coords
-      double y(double topDown) => _ph - topDown;
-
-      void line(double x1, double td1, double x2, double td2, double w) {
-        sb.write('$w w '
-            '${f(x1)} ${f(y(td1))} m '
-            '${f(x2)} ${f(y(td2))} l S\n');
-      }
-
-      // Text in a single call (BT…ET block)
-      void txt(String t, double x, double tdY, double size) {
-        final esc = t
-            .replaceAll('\\', '\\\\')
-            .replaceAll('(', '\\(')
-            .replaceAll(')', '\\)');
-        sb.write(
-            'BT /F1 ${f(size)} Tf ${f(x)} ${f(y(tdY))} Td ($esc) Tj ET\n');
-      }
-
-      // ── Header ────────────────────────────────────────────────────────
-      if (isFirst) {
-        // Title centred on its own line, clamped to left margin for long titles
-        final double titleSize = 18.0;
-        final double titleW = title.length * titleSize * 0.55;
-        final double titleX = ((_pw - titleW) / 2).clamp(_margin, _pw - _margin);
-        txt(title, titleX, _margin + 18, titleSize);
-        // Tempo on the line below, left-aligned
-        txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 38, 10);
-        // Subtitle (Transposition/Simplified info) right-aligned
-        if (subtitle.isNotEmpty) {
-          final double subW = subtitle.length * 5.5;
-          txt(subtitle, _pw - _margin - subW, _margin + 38, 10);
-        }
-      }
-
-      // ── Rows ──────────────────────────────────────────────────────────
-      final double topOfRows = isFirst ? _margin + headerH : _margin;
-
-      for (int r = row; r < lastRow; r++) {
-        final double rowTop = topOfRows + (r - row) * _rowH;
-        final double staffTop = rowTop + 24; // 24 pt above staff for chord names
-
-        // 5 staff lines
-        for (int li = 0; li < 5; li++) {
-          final double ly = staffTop + li * _staffLineGap;
-          line(_margin, ly, _pw - _margin, ly, 0.5);
-        }
-
-        // Outer bar lines
-        line(_margin, staffTop, _margin, staffTop + _staffH, 1.0);
-        line(_pw - _margin, staffTop, _pw - _margin, staffTop + _staffH, 1.0);
-
-        // Measure number (small, left of row)
-        final int firstMeas = r * _measPerRow;
-        txt('${firstMeas + 1}', _margin - 18, staffTop + 5, 7);
-
-        // Measures
-        for (int m = 0; m < _measPerRow; m++) {
-          final int mi = r * _measPerRow + m;
-          if (mi >= measures.length) break;
-
-          final double mLeft = _margin + m * measW;
-
-          // Inner bar line
-          if (m > 0) {
-            line(mLeft, staffTop, mLeft, staffTop + _staffH, 0.8);
-          }
-
-          // Beats
-          for (int b = 0; b < 4; b++) {
-            final double cx = mLeft + (b + 0.5) * beatW;
-            // Rhythm slash — diagonal from bottom-left to top-right
-            line(cx - 5, staffTop + _staffH - 3, cx + 5, staffTop + 3, 1.8);
-
-            final String chord = measures[mi][b];
-            if (chord.isNotEmpty) {
-              // Centre chord name above the beat's slash, 14pt above staff top
-              final double approxW = chord.length * 5.5;
-              txt(chord, cx - approxW / 2, staffTop - 14, 9);
-            }
-
-            final String lyric = lyricMeasures[mi][b];
-            if (lyric.isNotEmpty) {
-              // Left align the lyric beneath the slash
-              txt(lyric, cx - 5, staffTop + _staffH + 14, 8);
-            }
-          }
-        }
-      }
-
-      pageStreams.add(sb.toString());
-      row = lastRow;
-    }
-
-    return pageStreams;
-  }
-
-  // ── Step 3 – Serialise to raw PDF bytes ───────────────────────────────────
-  static Uint8List _serialisePdf(List<String> pageStreams) {
-    final int numPages = pageStreams.length;
-
-    // Object layout:
-    //  1 = Catalog
-    //  2 = Pages
-    //  3 = Font
-    //  4..4+numPages-1 = Page objects
-    //  4+numPages..4+2*numPages-1 = Content streams
-    final int firstPageObj = 4;
-    final int firstContentObj = 4 + numPages;
-    // Highest object ID = 3 (font) + numPages (pages) + numPages (streams)
-    final int totalObjs = 3 + 2 * numPages;
-
-    final List<int> out = [];
-    final List<int> offsets = List.filled(totalObjs + 1, 0); // 1-indexed
-
-    void w(String s) => out.addAll(s.codeUnits);
-    void wl(String s) => w('$s\n');
-
-    void beginObj(int id) {
-      offsets[id] = out.length;
-      wl('$id 0 obj');
-    }
-
-    void endObj() => wl('endobj');
-
-    // Header
-    wl('%PDF-1.4');
-
-    // Object 1 – Catalog
-    beginObj(1);
-    wl('<< /Type /Catalog /Pages 2 0 R >>');
-    endObj();
-
-    // Object 2 – Pages
-    beginObj(2);
-    final kids =
-        List.generate(numPages, (i) => '${firstPageObj + i} 0 R').join(' ');
-    wl('<< /Type /Pages /Kids [$kids] /Count $numPages >>');
-    endObj();
-
-    // Object 3 – Font
-    beginObj(3);
-    wl('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold '
-        '/Encoding /WinAnsiEncoding >>');
-    endObj();
-
-    // Page objects
-    for (int i = 0; i < numPages; i++) {
-      final int pageId = firstPageObj + i;
-      final int contentId = firstContentObj + i;
-      beginObj(pageId);
-      wl('<< /Type /Page /Parent 2 0 R');
-      wl('   /MediaBox [0 0 ${f(_pw)} ${f(_ph)}]');
-      wl('   /Resources << /Font << /F1 3 0 R >> >>');
-      wl('   /Contents $contentId 0 R >>');
-      endObj();
-    }
-
-    // Content stream objects
-    for (int i = 0; i < numPages; i++) {
-      final int contentId = firstContentObj + i;
-      final String stream = pageStreams[i];
-      beginObj(contentId);
-      wl('<< /Length ${stream.length} >>');
-      wl('stream');
-      w(stream);
-      wl('endstream');
-      endObj();
-    }
-
-    // xref
-    final int xrefOffset = out.length;
-    wl('xref');
-    wl('0 ${totalObjs + 1}');
-    wl('0000000000 65535 f ');
-    for (int id = 1; id <= totalObjs; id++) {
-      wl(offsets[id].toString().padLeft(10, '0') + ' 00000 n ');
-    }
-
-    // Trailer
-    wl('trailer');
-    wl('<< /Size ${totalObjs + 1} /Root 1 0 R >>');
-    wl('startxref');
-    wl('$xrefOffset');
-    w('%%EOF');
-
-    return Uint8List.fromList(out);
-  }
-
-  static String f(double v) => v.toStringAsFixed(2);
 }
