@@ -2692,7 +2692,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                             if (!showText) return const SizedBox.shrink();
                                             
                                             return Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                               child: FittedBox(
                                                 fit: BoxFit.scaleDown,
                                                 child: Text(
