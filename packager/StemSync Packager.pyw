@@ -204,7 +204,10 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 fallback = f
                 break
         y_harm, sr_harm = librosa.load(fallback, sr=22050)
-    chroma = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
+    print("Estimating tuning and extracting CENS chromagram...")
+    tuning = librosa.estimate_tuning(y=y_harm, sr=sr_harm)
+    # CENS (Chroma Energy Normalized Statistics) is highly robust to overtones and dynamics compared to raw CQT
+    chroma = librosa.feature.chroma_cens(y=y_harm, sr=sr_harm, tuning=tuning)
     
     maj_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
     min_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
@@ -266,7 +269,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     # ==== HARMONIC ANALYSIS (CHORDS) ====
     print("Detecting chords...")
-    chroma = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
+    # (Redundant chroma_cqt removed; utilizing CENS chroma calculated globally)
     chord_preds = []
     for j in range(len(beat_times)):
         frame = int(librosa.time_to_frames(beat_times[j], sr=sr_harm))
@@ -278,13 +281,9 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         chord_preds.append(chord_idx)
         
     if len(chord_preds) > 8:
-        # Pass 1: 7-beat rolling mode to smooth out noise
-        smoothed_preds = []
-        for i in range(len(chord_preds)):
-            start = max(0, i - 3)
-            end = min(len(chord_preds), i + 4)
-            window = chord_preds[start:end]
-            smoothed_preds.append(max(set(window), key=window.count))
+        # CENS chroma natively handles temporal smoothing, so we skip the destructive 7-beat mode filter 
+        # which was incorrectly erasing passing chords and fast harmonic rhythms.
+        smoothed_preds = chord_preds
             
         # Pass 2: Hysteresis filter (Run-Length constraint)
         # A chord MUST be solidly detected for at least 4 consecutive beats before we allow the UI to change to it.
