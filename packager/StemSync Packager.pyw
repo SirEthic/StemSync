@@ -235,33 +235,36 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     for i in range(12):
         root = keys[i]
         
-        # 1. Major
+        # 1. Major (Triad - Penalty 1.0)
         t = np.zeros(12); t[[0, 4, 7]] = 1; t = np.roll(t, i)
         chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root)
-        # 2. Minor
+        # 2. Minor (Triad - Penalty 1.0)
         t = np.zeros(12); t[[0, 3, 7]] = 1; t = np.roll(t, i)
         chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "m")
-        # 3. Diminished
+        # 3. Diminished (Triad - Penalty 1.0)
         t = np.zeros(12); t[[0, 3, 6]] = 1; t = np.roll(t, i)
         chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "dim")
-        # 4. Augmented
+        # 4. Augmented (Triad - Penalty 1.0)
         t = np.zeros(12); t[[0, 4, 8]] = 1; t = np.roll(t, i)
         chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "aug")
-        # 5. Major 7
+        # 5. Major 7 (4-note - Penalty 0.9)
         t = np.zeros(12); t[[0, 4, 7, 11]] = 1; t = np.roll(t, i)
-        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "maj7")
-        # 6. Minor 7
+        chord_templates.append((t / np.linalg.norm(t)) * 0.9); chord_names.append(root + "maj7")
+        # 6. Minor 7 (4-note - Penalty 0.9)
         t = np.zeros(12); t[[0, 3, 7, 10]] = 1; t = np.roll(t, i)
-        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "m7")
-        # 7. Dominant 7
+        chord_templates.append((t / np.linalg.norm(t)) * 0.9); chord_names.append(root + "m7")
+        # 7. Dominant 7 (4-note - Penalty 0.9)
         t = np.zeros(12); t[[0, 4, 7, 10]] = 1; t = np.roll(t, i)
-        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "7")
-        # 8. Sus 2
+        chord_templates.append((t / np.linalg.norm(t)) * 0.9); chord_names.append(root + "7")
+        # 8. Sus 2 (3-note but highly ambiguous - Penalty 0.95)
         t = np.zeros(12); t[[0, 2, 7]] = 1; t = np.roll(t, i)
-        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "sus2")
-        # 9. Sus 4
+        chord_templates.append((t / np.linalg.norm(t)) * 0.95); chord_names.append(root + "sus2")
+        # 9. Sus 4 (3-note but highly ambiguous - Penalty 0.95)
         t = np.zeros(12); t[[0, 5, 7]] = 1; t = np.roll(t, i)
-        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "sus4")
+        chord_templates.append((t / np.linalg.norm(t)) * 0.95); chord_names.append(root + "sus4")
+        # 10. Power Chord (2-note, captures heavy rock correctly without guessing Major/Minor)
+        t = np.zeros(12); t[[0, 7]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "5")
         
     chord_templates = np.array(chord_templates)
     chords_output = []
@@ -283,32 +286,12 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         # Average the raw CQT energy over the ENTIRE beat duration. 
         # This acts as a perfect temporal smoother for the exact duration of the beat, eliminating transient noise.
         frame_chroma = np.mean(chroma_raw[:, start_f:end_f], axis=1)
-        chord_idx = np.argmax(np.dot(chord_templates, frame_chroma)) if np.sum(frame_chroma) > 0 else -1
+        chord_idx = np.argmax(np.dot(chord_templates, frame_chroma)) if np.max(frame_chroma) > 0.05 else -1
         chord_preds.append(chord_idx)
         
-    if len(chord_preds) > 8:
-        # Pass 1: Raw beat-averaged preds feed directly into the hysteresis filter.
-        smoothed_preds = chord_preds
-            
-        # Pass 2: Hysteresis filter (Run-Length constraint)
-        # A chord MUST be solidly detected for at least 4 consecutive beats before we allow the UI to change to it.
-        final_preds = []
-        current_chord = smoothed_preds[0]
-        for i in range(len(smoothed_preds)):
-            if smoothed_preds[i] == current_chord:
-                final_preds.append(current_chord)
-            else:
-                # Look ahead to see if the new chord sustains
-                ahead = smoothed_preds[i : i + 2]
-                if len(ahead) == 2 and ahead.count(smoothed_preds[i]) == 2:
-                    # New chord is solid, accept it
-                    current_chord = smoothed_preds[i]
-                    final_preds.append(current_chord)
-                else:
-                    # Passing chord or noise, ignore it and sustain the old chord
-                    final_preds.append(current_chord)
-                    
-        chord_preds = final_preds
+    # The raw beat-averaged predictions are mathematically pure. 
+    # Hysteresis and mode filters have been completely removed so the app 
+    # faithfully captures rapid 1-beat passing chords exactly as they are played.
         
     for j in range(len(beat_times)):
         chord_idx = chord_preds[j]
