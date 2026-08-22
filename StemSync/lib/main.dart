@@ -2701,7 +2701,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                                     color: isActive 
                                                       ? (isGrey ? Colors.black54 : Colors.black) 
                                                       : (isGrey ? Colors.grey[600] : Colors.white),
-                                                    fontSize: isActive ? 24 : 18,
+                                                    fontSize: isActive ? 16 : 14,
                                                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal
                                                   )
                                                 ),
