@@ -839,7 +839,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         };
       }).toList();
       
-      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, subtitle, processedChords, _baseTempo);
+      final processedLyrics = _lyrics.map((l) => {'time': l.time, 'text': l.text}).toList();
+      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, subtitle, processedChords, processedLyrics, _baseTempo);
       if (file != null) {
         final xFile = XFile(file.path, mimeType: 'application/pdf');
         await Share.shareXFiles([xFile], text: "$title - Chord Sheet");

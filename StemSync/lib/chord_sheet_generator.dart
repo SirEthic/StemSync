@@ -10,7 +10,7 @@ class ChordSheetGenerator {
   static const double _ph = 841.89;
   static const double _margin = 45.0;
   static const int _measPerRow = 4;
-  static const double _rowH = 72.0; // vertical space per row
+  static const double _rowH = 86.0; // vertical space per row (increased for lyrics)
   static const double _staffLineGap = 5.5; // gap between each of 5 staff lines
   static const double _staffH = _staffLineGap * 4;
 
@@ -19,6 +19,7 @@ class ChordSheetGenerator {
     String title,
     String subtitle,
     List<dynamic> chords,
+    List<dynamic> lyrics,
     double tempoBpm,
   ) async {
     if (chords.isEmpty) return null;
@@ -27,8 +28,10 @@ class ChordSheetGenerator {
     final measures = _buildMeasures(chords, tempoBpm);
     if (measures.isEmpty) return null;
 
+    final lyricMeasures = _buildLyricMeasures(lyrics, tempoBpm, measures.length);
+
     // 2. Build one content-stream string per page
-    final pages = _buildPageStreams(title, subtitle, tempoBpm, measures);
+    final pages = _buildPageStreams(title, subtitle, tempoBpm, measures, lyricMeasures);
 
     // 3. Serialise to PDF bytes
     final bytes = _serialisePdf(pages);
@@ -101,9 +104,39 @@ class ChordSheetGenerator {
     return measures;
   }
 
+  static List<List<String>> _buildLyricMeasures(
+      List<dynamic> lyrics, double tempoBpm, int totalMeasures) {
+    final double spb = 60.0 / tempoBpm;
+    final double spm = spb * 4;
+
+    final measures =
+        List.generate(totalMeasures, (_) => List.filled(4, '', growable: false));
+
+    for (var l in lyrics) {
+      final rawTime = l['time'];
+      final text = l['text'];
+      if (rawTime == null || text == null) continue;
+
+      final double start = (rawTime as num).toDouble();
+      final int mi = (start / spm).floor();
+      final double tim = start - mi * spm;
+      final int bi = (tim / spb).floor().clamp(0, 3);
+
+      if (mi >= 0 && mi < totalMeasures) {
+        // Append text if multiple lyrics fall on the same beat
+        if (measures[mi][bi].isEmpty) {
+          measures[mi][bi] = text.toString();
+        } else {
+          measures[mi][bi] = "${measures[mi][bi]} ${text.toString()}";
+        }
+      }
+    }
+    return measures;
+  }
+
   // ── Step 2 – Build page content streams ───────────────────────────────────
   static List<String> _buildPageStreams(
-      String title, String subtitle, double tempoBpm, List<List<String>> measures) {
+      String title, String subtitle, double tempoBpm, List<List<String>> measures, List<List<String>> lyricMeasures) {
     final double usableW = _pw - _margin * 2;
     final double measW = usableW / _measPerRow;
     final double beatW = measW / 4;
@@ -205,6 +238,12 @@ class ChordSheetGenerator {
               // Centre chord name above the beat's slash, 14pt above staff top
               final double approxW = chord.length * 5.5;
               txt(chord, cx - approxW / 2, staffTop - 14, 9);
+            }
+
+            final String lyric = lyricMeasures[mi][b];
+            if (lyric.isNotEmpty) {
+              // Left align the lyric beneath the slash
+              txt(lyric, cx - 5, staffTop + _staffH + 14, 8);
             }
           }
         }
