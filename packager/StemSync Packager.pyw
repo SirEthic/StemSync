@@ -204,11 +204,9 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 fallback = f
                 break
         y_harm, sr_harm = librosa.load(fallback, sr=22050)
-    print("Extracting dual-stage chromagrams (Raw CQT + CENS)...")
+    print("Extracting chromagram...")
     # Raw CQT preserves volume energy, making it vastly superior for global Key Detection
     chroma_raw = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
-    # CENS normalizes and smooths data, making it vastly superior for frame-by-frame Chord Detection
-    chroma = librosa.feature.chroma_cens(C=chroma_raw)
     
     maj_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
     min_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
@@ -270,20 +268,26 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     # ==== HARMONIC ANALYSIS (CHORDS) ====
     print("Detecting chords...")
-    # (Redundant chroma_cqt removed; utilizing CENS chroma calculated globally)
+    # Use raw CQT to prevent the heavy temporal smearing of CENS, allowing us to catch fast passing chords
     chord_preds = []
     for j in range(len(beat_times)):
-        frame = int(librosa.time_to_frames(beat_times[j], sr=sr_harm))
-        # Analyze the window strictly AFTER the beat to capture sustained harmony, ignoring early strums
-        start_f = frame
-        end_f = min(chroma.shape[1], frame + 5)
-        frame_chroma = np.mean(chroma[:, start_f:end_f], axis=1)
+        start_f = int(librosa.time_to_frames(beat_times[j], sr=sr_harm))
+        if j < len(beat_times) - 1:
+            end_f = int(librosa.time_to_frames(beat_times[j+1], sr=sr_harm))
+        else:
+            end_f = chroma_raw.shape[1]
+            
+        if end_f <= start_f:
+            end_f = start_f + 1
+            
+        # Average the raw CQT energy over the ENTIRE beat duration. 
+        # This acts as a perfect temporal smoother for the exact duration of the beat, eliminating transient noise.
+        frame_chroma = np.mean(chroma_raw[:, start_f:end_f], axis=1)
         chord_idx = np.argmax(np.dot(chord_templates, frame_chroma)) if np.sum(frame_chroma) > 0 else -1
         chord_preds.append(chord_idx)
         
     if len(chord_preds) > 8:
-        # CENS chroma natively handles temporal smoothing, so we skip the destructive 7-beat mode filter 
-        # which was incorrectly erasing passing chords and fast harmonic rhythms.
+        # Pass 1: Raw beat-averaged preds feed directly into the hysteresis filter.
         smoothed_preds = chord_preds
             
         # Pass 2: Hysteresis filter (Run-Length constraint)
