@@ -636,6 +636,17 @@ if __name__ == "__main__":
 
     # === PROFESSIONAL ENTERPRISE UI REDESIGN ===
     root = ctk.CTk()
+    
+    # Robustly find icon path (works in dev and PyInstaller bundle)
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    icon_path = os.path.join(base_path, "icon.ico")
+    
+    if os.path.exists(icon_path):
+        root.iconbitmap(icon_path)
+        
     root.title("StemSync Engine")
     root.geometry("750x650")
     

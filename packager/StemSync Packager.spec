@@ -5,7 +5,7 @@ a = Analysis(
     ['StemSync Packager.pyw'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('icon.ico', '.')],
     hiddenimports=['shazamio', 'pydantic'],
     hookspath=[],
     hooksconfig={},
