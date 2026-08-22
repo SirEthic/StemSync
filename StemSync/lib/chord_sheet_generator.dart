@@ -84,6 +84,20 @@ class ChordSheetGenerator {
       }
     }
 
+    String lastChord = '';
+    for (int mi = 0; mi < totalMeasures; mi++) {
+      for (int bi = 0; bi < 4; bi++) {
+        String current = measures[mi][bi];
+        if (current.isNotEmpty) {
+          if (current == lastChord) {
+            measures[mi][bi] = '';
+          } else {
+            lastChord = current;
+          }
+        }
+      }
+    }
+
     return measures;
   }
 
