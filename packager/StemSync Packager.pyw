@@ -175,14 +175,20 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     # ==== HARMONIC ANALYSIS (KEY & CHORDS) ====
     import numpy as np
     
-    harmonic_track = audio_files[0]
+    print("Mixing stems for rich harmonic analysis...")
+    y_harm = None
+    sr_harm = None
     for file in audio_files:
-        if 'other' in file.name.lower() or 'piano' in file.name.lower() or 'guitar' in file.name.lower():
-            harmonic_track = file
-            break
-            
-    print(f"Analyzing harmony using: {harmonic_track.name} (This may take a minute...)")
-    y_harm, sr_harm = librosa.load(harmonic_track, sr=None)
+        n = file.name.lower()
+        if any(stem in n for stem in ['bass', 'guitar', 'piano', 'other']):
+            y_stem, sr_stem = librosa.load(file, sr=None)
+            if sr_harm is None: sr_harm = sr_stem
+            if y_harm is None:
+                y_harm = y_stem
+            else:
+                m_len = min(len(y_harm), len(y_stem))
+                y_harm[:m_len] += y_stem[:m_len]
+                
     chroma = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
     
     maj_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
@@ -210,10 +216,35 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     beat_frames_harm = librosa.time_to_frames(beat_times, sr=sr_harm)
     chord_templates, chord_names = [], []
     for i in range(12):
-        t_maj = np.zeros(12); t_maj[[0, 4, 7]] = 1; t_maj = np.roll(t_maj, i)
-        chord_templates.append(t_maj / np.linalg.norm(t_maj)); chord_names.append(keys[i])
-        t_min = np.zeros(12); t_min[[0, 3, 7]] = 1; t_min = np.roll(t_min, i)
-        chord_templates.append(t_min / np.linalg.norm(t_min)); chord_names.append(keys[i] + "m")
+        root = keys[i]
+        
+        # 1. Major
+        t = np.zeros(12); t[[0, 4, 7]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root)
+        # 2. Minor
+        t = np.zeros(12); t[[0, 3, 7]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "m")
+        # 3. Diminished
+        t = np.zeros(12); t[[0, 3, 6]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "dim")
+        # 4. Augmented
+        t = np.zeros(12); t[[0, 4, 8]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "aug")
+        # 5. Major 7
+        t = np.zeros(12); t[[0, 4, 7, 11]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "maj7")
+        # 6. Minor 7
+        t = np.zeros(12); t[[0, 3, 7, 10]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "m7")
+        # 7. Dominant 7
+        t = np.zeros(12); t[[0, 4, 7, 10]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "7")
+        # 8. Sus 2
+        t = np.zeros(12); t[[0, 2, 7]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "sus2")
+        # 9. Sus 4
+        t = np.zeros(12); t[[0, 5, 7]] = 1; t = np.roll(t, i)
+        chord_templates.append(t / np.linalg.norm(t)); chord_names.append(root + "sus4")
         
     chord_templates = np.array(chord_templates)
     chords_output = []
