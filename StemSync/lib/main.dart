@@ -1402,7 +1402,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     final lower = filename.toLowerCase();
     if (lower.contains('vocal')) return const FaIcon(FontAwesomeIcons.microphoneLines, color: Colors.white, size: 22);
     if (lower.contains('drum')) return const FaIcon(FontAwesomeIcons.drum, color: Colors.white, size: 22);
-    if (lower.contains('bass')) return const Icon(Icons.speaker_group_outlined, color: Colors.white, size: 24);
+    if (lower.contains('bass')) return const _BassGuitarIcon();
     if (lower.contains('guitar')) return const FaIcon(FontAwesomeIcons.guitar, color: Colors.white, size: 22);
     if (lower.contains('piano')) return const Icon(Icons.piano, color: Colors.white, size: 24);
     return const FaIcon(FontAwesomeIcons.music, color: Colors.white, size: 22);
@@ -3104,4 +3104,73 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       ),
     );
   }
+}
+
+/// A custom solid bass guitar icon drawn to match Font Awesome's solid icon style.
+class _BassGuitarIcon extends StatelessWidget {
+  const _BassGuitarIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 22,
+      height: 22,
+      child: CustomPaint(painter: _BassGuitarPainter()),
+    );
+  }
+}
+
+class _BassGuitarPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final double w = size.width;
+    final double h = size.height;
+
+    // Scale everything to canvas size (designed at 22x22)
+    canvas.save();
+    canvas.scale(w / 22.0, h / 22.0);
+
+    // Body - rounded Fender Precision Bass offset body shape
+    final bodyPath = Path();
+    // Lower bout
+    bodyPath.addOval(Rect.fromCenter(center: const Offset(7, 15), width: 11, height: 10));
+    // Upper bout (smaller offset cutaway)
+    bodyPath.addOval(Rect.fromCenter(center: const Offset(9, 10), width: 7.5, height: 7));
+    canvas.drawPath(bodyPath, paint);
+
+    // Neck - long thin rectangle at an angle
+    final neckPath = Path();
+    neckPath.moveTo(10.5, 8.5);
+    neckPath.lineTo(12.0, 7.5);
+    neckPath.lineTo(20.0, 1.5);
+    neckPath.lineTo(19.2, 0.5);
+    neckPath.lineTo(11.0, 6.5);
+    neckPath.lineTo(9.5, 7.5);
+    neckPath.close();
+    canvas.drawPath(neckPath, paint);
+
+    // Headstock
+    final headPath = Path();
+    headPath.addRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: const Offset(20.2, 1.2), width: 3.5, height: 2.2),
+      const Radius.circular(0.8),
+    ));
+    canvas.drawPath(headPath, paint);
+
+    // 4 tuning pegs as tiny circles
+    final pegPaint = Paint()..color = const Color(0xFF000000);
+    canvas.drawCircle(const Offset(19.2, 0.6), 0.55, pegPaint);
+    canvas.drawCircle(const Offset(20.5, 0.6), 0.55, pegPaint);
+    canvas.drawCircle(const Offset(19.2, 1.8), 0.55, pegPaint);
+    canvas.drawCircle(const Offset(20.5, 1.8), 0.55, pegPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
