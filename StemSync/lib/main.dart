@@ -661,7 +661,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                 leading: const Icon(Icons.library_music, color: Colors.white),
                 title: const Text('Chord Sheet', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Export a rhythm slash lead sheet as PDF', style: TextStyle(color: Colors.white70)),
+                subtitle: const Text('Export a rhythm slash lead sheet as PDF', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _exportChordSheet();
@@ -693,7 +693,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.audio_file, color: Colors.white),
                 title: const Text('Export Mixdown (Audio File)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.white70)),
+                subtitle: const Text("Export the final mixed track to a single WAV file", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _exportMix();
@@ -703,7 +703,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.tune, color: Colors.white),
                 title: const Text('Share Modified Stems (ZIP)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text("Zip and share the stems with your pitch/tempo/volume changes", style: TextStyle(color: Colors.white70)),
+                subtitle: const Text("Zip and share the stems with your pitch/tempo/volume changes", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _shareModifiedStems();
@@ -713,7 +713,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.folder_zip, color: Colors.white),
                 title: const Text('Share Original Song (ZIP)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text("Zip and share the original, unmodified song folder", style: TextStyle(color: Colors.white70)),
+                subtitle: const Text("Zip and share the original, unmodified song folder", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _shareOriginalSong();
@@ -1122,7 +1122,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.grey[900],
         title: const Text("Delete Song", style: TextStyle(color: Colors.white)),
-        content: const Text("Are you sure you want to permanently delete this song and all its separated stems?", style: TextStyle(color: Colors.white70)),
+        content: const Text("Are you sure you want to permanently delete this song and all its separated stems?", style: TextStyle(color: Colors.grey, fontSize: 12)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
@@ -2530,7 +2530,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                     builder: (ctx) => AlertDialog(
                                       backgroundColor: Colors.grey[900],
                                       title: const Text("Delete Setlist", style: TextStyle(color: Colors.white)),
-                                      content: const Text("Are you sure you want to delete this setlist? Your separated songs will remain safely in your library.", style: TextStyle(color: Colors.white70)),
+                                      content: const Text("Are you sure you want to delete this setlist? Your separated songs will remain safely in your library.", style: TextStyle(color: Colors.grey, fontSize: 12)),
                                       actions: [
                                         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
                                         TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
