@@ -178,21 +178,32 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     print("Mixing stems for rich harmonic analysis...")
     y_harm = None
     sr_harm = 22050  # Downsample for 4x faster processing and reduced overtone noise
+    valid_harmony = ['guitar', 'piano', 'other', 'instrumental', 'accompaniment', 'music']
     for file in audio_files:
         n = file.name.lower()
-        if any(stem in n for stem in ['bass', 'guitar', 'piano', 'other']):
+        if any(stem in n for stem in valid_harmony) or 'bass' in n:
             # 22kHz is perfectly detailed for chroma CQT
             y_stem, _ = librosa.load(file, sr=sr_harm)
+            
+            # Bass waves carry massive energy and can overwhelm the CQT, throwing off key detection
+            if 'bass' in n:
+                y_stem = y_stem * 0.4
+                
             if y_harm is None:
-                y_harm = y_stem
+                y_harm = np.copy(y_stem)
             else:
                 m_len = min(len(y_harm), len(y_stem))
                 y_harm[:m_len] += y_stem[:m_len]
                 
-    # Fallback if no matching stems were found (e.g. non-standard filenames)
+    # Robust fallback: Avoid drums and vocals if standard stem names weren't found
     if y_harm is None and len(audio_files) > 0:
-        y_harm, sr_harm = librosa.load(audio_files[0], sr=22050)
-                
+        fallback = audio_files[0]
+        for f in audio_files:
+            fn = f.name.lower()
+            if 'drum' not in fn and 'vocal' not in fn:
+                fallback = f
+                break
+        y_harm, sr_harm = librosa.load(fallback, sr=22050)
     chroma = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
     
     maj_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
