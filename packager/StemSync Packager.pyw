@@ -177,17 +177,21 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     print("Mixing stems for rich harmonic analysis...")
     y_harm = None
-    sr_harm = None
+    sr_harm = 22050  # Downsample for 4x faster processing and reduced overtone noise
     for file in audio_files:
         n = file.name.lower()
         if any(stem in n for stem in ['bass', 'guitar', 'piano', 'other']):
-            y_stem, sr_stem = librosa.load(file, sr=None)
-            if sr_harm is None: sr_harm = sr_stem
+            # 22kHz is perfectly detailed for chroma CQT
+            y_stem, _ = librosa.load(file, sr=sr_harm)
             if y_harm is None:
                 y_harm = y_stem
             else:
                 m_len = min(len(y_harm), len(y_stem))
                 y_harm[:m_len] += y_stem[:m_len]
+                
+    # Fallback if no matching stems were found (e.g. non-standard filenames)
+    if y_harm is None and len(audio_files) > 0:
+        y_harm, sr_harm = librosa.load(audio_files[0], sr=22050)
                 
     chroma = librosa.feature.chroma_cqt(y=y_harm, sr=sr_harm)
     
