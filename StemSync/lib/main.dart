@@ -1616,12 +1616,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       final lrcFile = File('${targetDir.path}/lyrics.lrc');
       if (lrcFile.existsSync()) {
         _parseLrcContent(lrcFile.readAsStringSync());
-      } else if (_songMetadata != null && _songMetadata!['song_name'] != null) {
-        bool hasVocals = targetDir.listSync().any((e) => e.path.toLowerCase().contains('vocal') && e.path.endsWith('.wav'));
-        if (hasVocals) {
-          // Run asynchronously without blocking the song open
-          _fetchLyricsFromLRCLIB(targetDir, _songMetadata!['song_name'], _songMetadata!['artist']);
-        }
       }
 
       Map<String, double> savedVolumes = {};
