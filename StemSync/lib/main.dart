@@ -817,6 +817,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     try {
       final title = _songMetadata != null ? (_songMetadata!['song_name'] ?? _activeSongDir!.path.split(Platform.pathSeparator).last) : "Chord Sheet";
       
+      String subtitle = "";
+      if (_pitchShiftSemitones != 0) {
+        subtitle += "Transposed: ${_pitchShiftSemitones > 0 ? '+' : ''}${_pitchShiftSemitones.toInt()}  ";
+      }
+      if (_simplifyChords) {
+        subtitle += "(Simplified)";
+      }
+      
       // Process chords before generating PDF to respect Pitch Shifting and Simplified Chords toggle
       final processedChords = _chords.map((c) {
         return {
@@ -825,7 +833,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         };
       }).toList();
       
-      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, processedChords, _baseTempo);
+      final file = await ChordSheetGenerator.generateAndSaveChordSheet(title, subtitle, processedChords, _baseTempo);
       if (file != null) {
         final xFile = XFile(file.path, mimeType: 'application/pdf');
         await Share.shareXFiles([xFile], text: "$title - Chord Sheet");

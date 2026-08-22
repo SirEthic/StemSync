@@ -17,6 +17,7 @@ class ChordSheetGenerator {
   // ── Public entry-point ────────────────────────────────────────────────────
   static Future<File?> generateAndSaveChordSheet(
     String title,
+    String subtitle,
     List<dynamic> chords,
     double tempoBpm,
   ) async {
@@ -27,7 +28,7 @@ class ChordSheetGenerator {
     if (measures.isEmpty) return null;
 
     // 2. Build one content-stream string per page
-    final pages = _buildPageStreams(title, tempoBpm, measures);
+    final pages = _buildPageStreams(title, subtitle, tempoBpm, measures);
 
     // 3. Serialise to PDF bytes
     final bytes = _serialisePdf(pages);
@@ -88,7 +89,7 @@ class ChordSheetGenerator {
 
   // ── Step 2 – Build page content streams ───────────────────────────────────
   static List<String> _buildPageStreams(
-      String title, double tempoBpm, List<List<String>> measures) {
+      String title, String subtitle, double tempoBpm, List<List<String>> measures) {
     final double usableW = _pw - _margin * 2;
     final double measW = usableW / _measPerRow;
     final double beatW = measW / 4;
@@ -139,6 +140,11 @@ class ChordSheetGenerator {
         txt(title, titleX, _margin + 18, titleSize);
         // Tempo on the line below, left-aligned
         txt('q = ${tempoBpm.round()} BPM', _margin, _margin + 38, 10);
+        // Subtitle (Transposition/Simplified info) right-aligned
+        if (subtitle.isNotEmpty) {
+          final double subW = subtitle.length * 5.5;
+          txt(subtitle, _pw - _margin - subW, _margin + 38, 10);
+        }
       }
 
       // ── Rows ──────────────────────────────────────────────────────────
