@@ -665,6 +665,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   _exportChordSheet();
                 },
               ),
+              const SizedBox(height: 24),
             ],
           ),
         );
@@ -715,6 +716,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   _shareOriginalSong();
                 },
               ),
+              const SizedBox(height: 24),
             ],
           ),
         );
