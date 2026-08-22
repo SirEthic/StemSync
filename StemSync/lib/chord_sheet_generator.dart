@@ -117,17 +117,20 @@ class ChordSheetGenerator {
       final text = l['text'];
       if (rawTime == null || text == null) continue;
 
+      // Clean the text to prevent PDF rendering issues with unicode or enhanced LRC tags
+      String cleanText = text.toString().replaceAll(RegExp(r'<[^>]*>'), '');
+      cleanText = cleanText.replaceAll(RegExp(r'[^\x20-\x7E]'), '').trim();
+      if (cleanText.isEmpty) continue;
+
       final double start = (rawTime as num).toDouble();
       final int mi = (start / spm).floor();
-      final double tim = start - mi * spm;
-      final int bi = (tim / spb).floor().clamp(0, 3);
 
       if (mi >= 0 && mi < totalMeasures) {
-        // Append text if multiple lyrics fall on the same beat
-        if (measures[mi][bi].isEmpty) {
-          measures[mi][bi] = text.toString();
+        // Group all lyrics for this measure into the first beat slot so they print as a continuous natural sentence
+        if (measures[mi][0].isEmpty) {
+          measures[mi][0] = cleanText;
         } else {
-          measures[mi][bi] = "${measures[mi][bi]} ${text.toString()}";
+          measures[mi][0] = "${measures[mi][0]} $cleanText";
         }
       }
     }
