@@ -22,6 +22,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   bool _isLoading = false;
   final Set<String> _downloadingIds = {};
   final Map<String, String> _downloadProgressMap = {};
+  final Map<String, double> _downloadRatioMap = {};
   
   // Use API key from local .env file to protect it from GitHub
   String get _apiKey => dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
@@ -195,10 +196,11 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     return "${mb.toStringAsFixed(1)} MB";
   }
 
-  Future<void> _downloadSong(String fileId, String fileName) async {
+    Future<void> _downloadSong(String fileId, String fileName) async {
     setState(() { 
       _downloadingIds.add(fileId); 
       _downloadProgressMap[fileId] = "Starting...";
+      _downloadRatioMap[fileId] = 0.0;
     });
     
     try {
@@ -227,6 +229,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
               final String progStr = "${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}";
               setState(() {
                 _downloadProgressMap[fileId] = progStr;
+                _downloadRatioMap[fileId] = receivedBytes / totalBytes;
               });
             } else {
               setState(() {
@@ -255,6 +258,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         setState(() { 
           _downloadingIds.remove(fileId); 
           _downloadProgressMap.remove(fileId);
+          _downloadRatioMap.remove(fileId);
         });
       }
     }
@@ -367,6 +371,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                         final String name = song['name'].toString().replaceAll('.zip', '');
                         final String id = song['id'];
                         final bool isDownloading = _downloadingIds.contains(id);
+                        final double ratio = _downloadRatioMap[id] ?? 0.0;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -374,13 +379,30 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color: isDownloading ? Colors.teal.withValues(alpha: 0.2) : const Color(0xFF1A1A1A),
+                              color: const Color(0xFF1A1A1A),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
                             ),
-                            child: Icon(
-                              isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
-                              color: isDownloading ? Colors.tealAccent : Colors.white70
+                            clipBehavior: Clip.hardEdge,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                if (isDownloading)
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      height: 50 * ratio,
+                                      color: Colors.teal.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                Icon(
+                                  isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
+                                  color: isDownloading ? Colors.tealAccent : Colors.white70
+                                ),
+                              ],
                             ),
                           ),
                           title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
