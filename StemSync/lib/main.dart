@@ -2515,9 +2515,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             ),
           ],
         ),
-        body: _isLibraryLoading 
-          ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-          : IndexedStack(
+        body: Stack(
+          children: [
+            IndexedStack(
               index: _libraryTabIndex,
               children: [
                 // TAB 0: SONGS
@@ -2630,6 +2630,15 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 ),
               ],
             ),
+            if (_isLibraryLoading)
+              Container(
+                color: Colors.black.withValues(alpha: 0.6),
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.tealAccent),
+                ),
+              ),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _libraryTabIndex,
           onTap: (idx) => setState(() => _libraryTabIndex = idx),
