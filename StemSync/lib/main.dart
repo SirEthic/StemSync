@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'chord_sheet_generator.dart';
+import 'cloud_library_tab.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
@@ -1424,9 +1425,33 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     return '${clean[0].toUpperCase()}${clean.substring(1)}';
   }
 
-  Future<void> _loadZipFile() async {
+  Future<void> _processZipFile(String zipPath, String zipNameRaw) async {
     try {
       setState(() { _isLibraryLoading = true; });
+      final zipName = zipNameRaw.replaceAll('.zip', '').replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+      
+      final docDir = await getApplicationDocumentsDirectory();
+      final targetDir = Directory('${docDir.path}/songs/$zipName');
+      
+      if (targetDir.existsSync()) {
+        targetDir.deleteSync(recursive: true);
+      }
+      targetDir.createSync(recursive: true);
+
+      await compute(_extractZipInIsolate, {
+        'zipPath': zipPath,
+        'targetPath': targetDir.path,
+      });
+      
+      await _loadLibrary();
+    } catch (e) {
+      setState(() { _isLibraryLoading = false; });
+      debugPrint("Error extracting zip: $e");
+    }
+  }
+
+  Future<void> _loadZipFile() async {
+    try {
       List<PlatformFile>? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['zip'],
@@ -1434,28 +1459,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
       if (result != null && result.isNotEmpty) {
         final zipPath = result.single.path!;
-        final zipName = result.single.name.replaceAll('.zip', '').replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
-        
-        final docDir = await getApplicationDocumentsDirectory();
-        final targetDir = Directory('${docDir.path}/songs/$zipName');
-        
-        if (targetDir.existsSync()) {
-          targetDir.deleteSync(recursive: true);
-        }
-        targetDir.createSync(recursive: true);
-
-        await compute(_extractZipInIsolate, {
-          'zipPath': zipPath,
-          'targetPath': targetDir.path,
-        });
-        
-        await _loadLibrary();
-      } else {
-        setState(() { _isLibraryLoading = false; });
+        final zipNameRaw = result.single.name;
+        await _processZipFile(zipPath, zipNameRaw);
       }
     } catch (e) {
-      setState(() { _isLibraryLoading = false; });
-      debugPrint("Error extracting zip: $e");
+      debugPrint("Error picking zip: $e");
     }
   }
 
@@ -2551,6 +2559,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         ),
                     ],
                   ),
+                // TAB 2: CLOUD
+                CloudLibraryTab(
+                  onDownloadComplete: (zipFile) {
+                    final filename = zipFile.path.split(Platform.pathSeparator).last;
+                    _processZipFile(zipFile.path, filename).then((_) {
+                      // Optional: delete the temp zip file after extracting
+                      try { zipFile.deleteSync(); } catch (_) {}
+                    });
+                  },
+                ),
               ],
             ),
         bottomNavigationBar: BottomNavigationBar(
@@ -2562,9 +2580,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Songs"),
             BottomNavigationBarItem(icon: Icon(Icons.queue_music), label: "Setlists"),
+            BottomNavigationBarItem(icon: Icon(Icons.cloud), label: "Cloud"),
           ],
         ),
-        floatingActionButton: _libraryTabIndex == 0 
+        floatingActionButton: _libraryTabIndex == 2
+          ? null 
+          : _libraryTabIndex == 0 
           ? FloatingActionButton.extended(
               onPressed: _loadZipFile,
               elevation: 8,
