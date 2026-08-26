@@ -291,11 +291,6 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white70),
-                tooltip: "Refresh List",
-                onPressed: _fetchCloudSongs,
-              ),
-              IconButton(
                 icon: const Icon(Icons.edit, color: Colors.white70),
                 tooltip: "Change Folder",
                 onPressed: _promptForFolderLink,
@@ -306,55 +301,60 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         Expanded(
           child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-            : _cloudSongs.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.folder_open, size: 48, color: Colors.white24),
-                      SizedBox(height: 16),
-                      Text("No .zip files found in this folder.", style: TextStyle(color: Colors.white54)),
-                    ],
-                  )
-                )
-              : ListView.builder(
-                  itemCount: _cloudSongs.length,
-                  itemBuilder: (context, index) {
-                    final song = _cloudSongs[index];
-                    final String name = song['name'].toString().replaceAll('.zip', '');
-                    final String id = song['id'];
-                    final bool isDownloading = _downloadingIds.contains(id);
+            : RefreshIndicator(
+                color: Colors.tealAccent,
+                backgroundColor: const Color(0xFF1A1A1A),
+                onRefresh: _fetchCloudSongs,
+                child: _cloudSongs.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                        const Icon(Icons.folder_open, size: 48, color: Colors.white24),
+                        const SizedBox(height: 16),
+                        const Center(child: Text("No .zip files found in this folder.", style: TextStyle(color: Colors.white54))),
+                      ],
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: _cloudSongs.length,
+                      itemBuilder: (context, index) {
+                        final song = _cloudSongs[index];
+                        final String name = song['name'].toString().replaceAll('.zip', '');
+                        final String id = song['id'];
+                        final bool isDownloading = _downloadingIds.contains(id);
 
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      leading: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: isDownloading ? Colors.teal.withValues(alpha: 0.2) : const Color(0xFF1A1A1A),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
-                        ),
-                        child: Icon(
-                          isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
-                          color: isDownloading ? Colors.tealAccent : Colors.white70
-                        ),
-                      ),
-                      title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
-                      subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)),
-                      trailing: isDownloading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2),
-                            )
-                          : const Icon(Icons.download_rounded, color: Colors.tealAccent),
-                      onTap: () {
-                        if (!isDownloading) _downloadSong(id, song['name']);
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: isDownloading ? Colors.teal.withValues(alpha: 0.2) : const Color(0xFF1A1A1A),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
+                            ),
+                            child: Icon(
+                              isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
+                              color: isDownloading ? Colors.tealAccent : Colors.white70
+                            ),
+                          ),
+                          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
+                          subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)),
+                          trailing: isDownloading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.download_rounded, color: Colors.tealAccent),
+                          onTap: () {
+                            if (!isDownloading) _downloadSong(id, song['name']);
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
+              ),
         ),
       ],
     );
