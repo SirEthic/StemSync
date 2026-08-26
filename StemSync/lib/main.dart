@@ -2806,7 +2806,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                 child: Text(
                                   _lyrics[index].text,
                                   style: TextStyle(
-                                    fontSize: isActive ? 22 : 16,
+                                    fontSize: _lyrics[index].text == '♪' 
+                                      ? (isActive ? 36 : 28) 
+                                      : (isActive ? 22 : 16),
                                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                                     color: isActive ? Colors.tealAccent : Colors.grey[600],
                                   ),
