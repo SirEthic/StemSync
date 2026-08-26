@@ -2702,8 +2702,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                              
                              int chordIdx = index - 1;
                              double start = (_chords[chordIdx]['time'] as num).toDouble();
-                             double end = chordIdx < _chords.length - 1 ? (_chords[chordIdx + 1]['time'] as num).toDouble() : _songLength;
-                             if (end < start) end = start;
+                             double end;
+                             if (chordIdx < _chords.length - 1) {
+                               end = (_chords[chordIdx + 1]['time'] as num).toDouble();
+                             } else {
+                               // For the very last chord, extrapolate its duration based on the previous chord's duration
+                               double prevDuration = chordIdx > 0 
+                                   ? start - (_chords[chordIdx - 1]['time'] as num).toDouble() 
+                                   : 2.0;
+                               end = start + prevDuration;
+                               if (end > _songLength) end = _songLength;
+                             }
+                             
+                             if (end < start) end = start + 0.1;
                              double width = (end - start) * 160.0;
                              bool isDownbeat = (chordIdx % 4 == 0);
                              
