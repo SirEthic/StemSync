@@ -27,12 +27,21 @@ tasks.register<Delete>("clean") {
 
 allprojects {
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        if (project.name == "receive_sharing_intent") {
+            sourceCompatibility = "1.8"
+            targetCompatibility = "1.8"
+        } else {
+            sourceCompatibility = "17"
+            targetCompatibility = "17"
+        }
     }
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            if (project.name == "receive_sharing_intent") {
+                jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+            } else {
+                jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            }
         }
     }
 }

@@ -171,55 +171,86 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   Widget build(BuildContext context) {
     if (_folderId.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_download_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              "No Cloud Folder Connected",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Paste a public Google Drive folder link\nto access your band's songs anywhere.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _promptForFolderLink,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.cloud_sync_rounded, size: 80, color: Colors.tealAccent),
               ),
-              child: const Text("Connect Drive Folder"),
-            )
-          ],
+              const SizedBox(height: 32),
+              const Text(
+                "Connect Band Drive",
+                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Paste a public Google Drive folder link to instantly access your band's stems and zip files anywhere.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.4),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _promptForFolderLink,
+                  icon: const Icon(Icons.link, size: 24),
+                  label: const Text("Paste Drive Link", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 8,
+                    shadowColor: Colors.teal.withOpacity(0.5),
+                  ),
+                ),
+              )
+            ],
+          ),
         ),
       );
     }
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
+        Container(
+          margin: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.teal.withOpacity(0.3), width: 1),
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Cloud Library", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.tealAccent),
-                    onPressed: _fetchCloudSongs,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.link, color: Colors.grey),
-                    onPressed: _promptForFolderLink,
-                  ),
-                ],
-              )
+              const Icon(Icons.cloud_done, color: Colors.tealAccent, size: 28),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Connected to Drive", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text("Auto-syncing .zip files", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white70),
+                tooltip: "Refresh List",
+                onPressed: _fetchCloudSongs,
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white70),
+                tooltip: "Change Folder",
+                onPressed: _promptForFolderLink,
+              ),
             ],
           ),
         ),
@@ -227,7 +258,16 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
           child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
             : _cloudSongs.isEmpty
-              ? const Center(child: Text("No .zip files found in this folder.", style: TextStyle(color: Colors.grey)))
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.folder_open, size: 48, color: Colors.white24),
+                      SizedBox(height: 16),
+                      Text("No .zip files found in this folder.", style: TextStyle(color: Colors.white54)),
+                    ],
+                  )
+                )
               : ListView.builder(
                   itemCount: _cloudSongs.length,
                   itemBuilder: (context, index) {
@@ -238,22 +278,28 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
 
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.teal,
-                        child: Icon(Icons.cloud, color: Colors.white),
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: isDownloading ? Colors.teal.withOpacity(0.2) : const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
+                        ),
+                        child: Icon(
+                          isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
+                          color: isDownloading ? Colors.tealAccent : Colors.white70
+                        ),
                       ),
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      subtitle: const Text("Tap to download", style: TextStyle(color: Colors.grey)),
+                      title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
+                      subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withOpacity(0.7) : Colors.grey)),
                       trailing: isDownloading
                           ? const SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2),
                             )
-                          : IconButton(
-                              icon: const Icon(Icons.download, color: Colors.tealAccent),
-                              onPressed: () => _downloadSong(id, song['name']),
-                            ),
+                          : const Icon(Icons.download_rounded, color: Colors.tealAccent),
                       onTap: () {
                         if (!isDownloading) _downloadSong(id, song['name']);
                       },
