@@ -2613,7 +2613,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     final scaffold = ScaffoldMessenger.of(context);
                     _processZipFile(zipFile.path, filename).then((_) {
                       if (mounted) {
-                        setState(() { _libraryTabIndex = 0; });
                         scaffold.showSnackBar(
                           SnackBar(
                             content: const Text('Song extracted and added to library!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
