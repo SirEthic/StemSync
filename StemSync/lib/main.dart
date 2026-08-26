@@ -19,6 +19,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'chord_sheet_generator.dart';
 import 'cloud_library_tab.dart';
 
@@ -43,10 +44,10 @@ class LyricLine {
   LyricLine({required this.time, required this.text});
 }
 
-
-
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await SoLoud.instance.init();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const StemSyncApp());
 }

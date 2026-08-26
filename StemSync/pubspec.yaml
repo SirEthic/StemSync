@@ -46,6 +46,7 @@ dependencies:
   pdf: ^3.11.1
   flutter_svg: ^2.0.10+1
   shared_preferences: ^2.5.5
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - assets/tick.wav
     - assets/icon.jpg
     - assets/splash.png

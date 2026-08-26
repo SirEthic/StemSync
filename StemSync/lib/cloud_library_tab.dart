@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CloudLibraryTab extends StatefulWidget {
   final Function(File) onDownloadComplete;
@@ -20,8 +21,8 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   bool _isLoading = false;
   final Set<String> _downloadingIds = {};
   
-  // You will need to replace this with your actual Google Cloud API Key
-  final String _apiKey = 'YOUR_GOOGLE_DRIVE_API_KEY';
+  // Use API key from local .env file to protect it from GitHub
+  String get _apiKey => dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
 
   @override
   void initState() {
