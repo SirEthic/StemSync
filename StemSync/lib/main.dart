@@ -2614,7 +2614,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       if (mounted) {
                         setState(() { _libraryTabIndex = 0; });
                         scaffold.showSnackBar(
-                          const SnackBar(content: Text('Song extracted and added to library!'))
+                          SnackBar(
+                            content: const Text('Song extracted and added to library!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
+                            duration: const Duration(seconds: 3), 
+                            backgroundColor: Colors.grey[900],
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          )
                         );
                       }
                       // Optional: delete the temp zip file after extracting

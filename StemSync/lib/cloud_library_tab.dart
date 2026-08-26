@@ -21,6 +21,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   List<dynamic> _cloudSongs = [];
   bool _isLoading = false;
   final Set<String> _downloadingIds = {};
+  final Map<String, String> _downloadProgressMap = {};
   
   // Use API key from local .env file to protect it from GitHub
   String get _apiKey => dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
@@ -189,16 +190,54 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     }
   }
 
+  String _formatBytes(int bytes) {
+    final double mb = bytes / (1024 * 1024);
+    return "${mb.toStringAsFixed(1)} MB";
+  }
+
   Future<void> _downloadSong(String fileId, String fileName) async {
-    setState(() { _downloadingIds.add(fileId); });
+    setState(() { 
+      _downloadingIds.add(fileId); 
+      _downloadProgressMap[fileId] = "Starting...";
+    });
+    
     try {
       final url = Uri.parse("https://www.googleapis.com/drive/v3/files/$fileId?alt=media&key=$_apiKey");
-      final response = await http.get(url);
+      final request = http.Request('GET', url);
+      final client = http.Client();
+      final response = await client.send(request);
 
       if (response.statusCode == 200) {
+        final totalBytes = response.contentLength ?? 0;
+        int receivedBytes = 0;
+        int lastUpdatedBytes = 0;
+        
         final docDir = await getApplicationDocumentsDirectory();
         final tempZip = File('${docDir.path}/$fileName');
-        await tempZip.writeAsBytes(response.bodyBytes);
+        final sink = tempZip.openWrite();
+        
+        await for (final chunk in response.stream) {
+          receivedBytes += chunk.length;
+          sink.add(chunk);
+          
+          // Only update UI every 500KB to avoid jank
+          if (receivedBytes - lastUpdatedBytes > 500 * 1024 || receivedBytes == totalBytes) {
+            lastUpdatedBytes = receivedBytes;
+            if (totalBytes > 0) {
+              final String progStr = "${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}";
+              setState(() {
+                _downloadProgressMap[fileId] = progStr;
+              });
+            } else {
+              setState(() {
+                _downloadProgressMap[fileId] = "${_formatBytes(receivedBytes)} downloaded";
+              });
+            }
+          }
+        }
+        
+        await sink.close();
+        client.close();
         
         // Pass it back to main.dart to unzip and add to local library
         widget.onDownloadComplete(tempZip);
@@ -212,7 +251,12 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     } catch (e) {
       debugPrint("Exception downloading file: $e");
     } finally {
-      setState(() { _downloadingIds.remove(fileId); });
+      if (mounted) {
+        setState(() { 
+          _downloadingIds.remove(fileId); 
+          _downloadProgressMap.remove(fileId);
+        });
+      }
     }
   }
 
@@ -340,7 +384,10 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             ),
                           ),
                           title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
-                          subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)),
+                          subtitle: Text(
+                            isDownloading ? (_downloadProgressMap[id] ?? "Downloading...") : "Tap to download", 
+                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)
+                          ),
                           trailing: isDownloading
                               ? const SizedBox(
                                   width: 24,
