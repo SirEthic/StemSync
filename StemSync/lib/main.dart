@@ -2609,10 +2609,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 CloudLibraryTab(
                   onDownloadComplete: (zipFile) {
                     final filename = zipFile.path.split(Platform.pathSeparator).last;
+                    final scaffold = ScaffoldMessenger.of(context);
                     _processZipFile(zipFile.path, filename).then((_) {
                       if (mounted) {
                         setState(() { _libraryTabIndex = 0; });
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        scaffold.showSnackBar(
                           const SnackBar(content: Text('Song extracted and added to library!'))
                         );
                       }
