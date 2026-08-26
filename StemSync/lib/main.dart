@@ -1342,8 +1342,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           
           _chordScrollController.animateTo(
             targetPos,
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
           );
         }
       }
