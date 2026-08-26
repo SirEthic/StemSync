@@ -1233,8 +1233,26 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       }
     }
     
-    if (parsed.isNotEmpty && mounted) {
-      setState(() => _lyrics = parsed);
+    // Inject Instrumental gaps automatically
+    List<LyricLine> finalParsed = [];
+    if (parsed.isNotEmpty && parsed.first.time > 12.0) {
+      // Long intro
+      finalParsed.add(LyricLine(time: 0.0, text: '🎵 • • • 🎵'));
+    }
+
+    for (int i = 0; i < parsed.length; i++) {
+      finalParsed.add(parsed[i]);
+      if (i < parsed.length - 1) {
+        double timeDiff = parsed[i + 1].time - parsed[i].time;
+        if (timeDiff > 14.0) {
+          // If there is more than a 14 second gap between lines, inject a music symbol 5 seconds after the previous line ends
+          finalParsed.add(LyricLine(time: parsed[i].time + 5.0, text: '🎵 • • • 🎵'));
+        }
+      }
+    }
+    
+    if (finalParsed.isNotEmpty && mounted) {
+      setState(() => _lyrics = finalParsed);
     }
   }
 
