@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -59,8 +60,20 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     return url; // Assume they just pasted the ID directly
   }
 
-  void _promptForFolderLink() {
+  Future<void> _promptForFolderLink() async {
     final controller = TextEditingController();
+    
+    // Auto-check clipboard for a Google Drive link
+    try {
+      final clipboardData = await Clipboard.getData('text/plain');
+      final text = clipboardData?.text ?? '';
+      if (text.contains('drive.google.com/drive/folders/')) {
+        controller.text = text;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -69,9 +82,18 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: "Paste Google Drive Folder Link",
-            hintStyle: TextStyle(color: Colors.white54),
+            hintStyle: const TextStyle(color: Colors.white54),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.content_paste, color: Colors.tealAccent),
+              onPressed: () async {
+                final clipboardData = await Clipboard.getData('text/plain');
+                if (clipboardData != null && clipboardData.text != null) {
+                  controller.text = clipboardData.text!;
+                }
+              },
+            ),
           ),
         ),
         actions: [
