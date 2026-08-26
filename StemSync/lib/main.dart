@@ -99,8 +99,15 @@ class StemSyncApp extends StatelessWidget {
           activeTrackColor: Colors.tealAccent,
           inactiveTrackColor: Colors.grey[800],
           thumbColor: Colors.grey[400],
-          overlayColor: Colors.tealAccent.withOpacity(0.2),
+          overlayColor: Colors.tealAccent.withValues(alpha: 0.2),
           trackHeight: 4.0,
+        ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: Colors.grey[900],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
       ),
       home: const MixerScreen(),
@@ -201,7 +208,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
   
-  void _createPlaylist() {
+  void _createPlaylist({String? autoAddDirName}) {
     TextEditingController ctrl = TextEditingController();
     showDialog(
       context: context,
@@ -219,6 +226,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               if (ctrl.text.trim().isNotEmpty) {
                 setState(() {
                   _playlists[ctrl.text.trim()] = [];
+                  if (autoAddDirName != null) {
+                    _playlists[ctrl.text.trim()]!.add(autoAddDirName);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to ${ctrl.text.trim()}")));
+                  }
                   _activePlaylist = ctrl.text.trim();
                 });
                 _savePlaylists();
@@ -363,11 +374,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   }
 
   void _addToPlaylist(String dirName) {
-    if (_playlists.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Create a setlist first!")));
-      return;
-    }
-    
     String searchQuery = "";
     
     showDialog(
@@ -384,56 +390,81 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search setlists...",
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                  if (_playlists.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Search setlists...",
+                          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.black26,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                         ),
-                        filled: true,
-                        fillColor: Colors.black26,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            searchQuery = val;
+                          });
+                        },
                       ),
-                      onChanged: (val) {
-                        setDialogState(() {
-                          searchQuery = val;
-                        });
-                      },
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                  if (_playlists.isNotEmpty)
+                    const SizedBox(height: 16),
+                  
+                  if (_playlists.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      child: Text(
+                        "You don't have any setlists yet. Create one to organize your gig!",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+
                   Flexible(
                     child: ListView(
                       shrinkWrap: true,
                       padding: const EdgeInsets.only(bottom: 16),
-                      children: filteredKeys.map((pName) {
-                        final bool isInPlaylist = _playlists[pName]!.contains(dirName);
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                          title: Text(pName, style: const TextStyle(fontSize: 16)),
-                          trailing: Icon(
-                            isInPlaylist ? Icons.remove_circle_outline : Icons.add_circle_outline, 
-                            color: isInPlaylist ? Colors.redAccent : Colors.tealAccent
+                      children: [
+                        ...filteredKeys.map((pName) {
+                          final bool isInPlaylist = _playlists[pName]!.contains(dirName);
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                            title: Text(pName, style: const TextStyle(fontSize: 16)),
+                            trailing: Icon(
+                              isInPlaylist ? Icons.remove_circle_outline : Icons.add_circle_outline, 
+                              color: isInPlaylist ? Colors.redAccent : Colors.tealAccent
+                            ),
+                            onTap: () {
+                              setState(() {
+                                if (isInPlaylist) {
+                                  _playlists[pName]!.remove(dirName);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Removed from $pName")));
+                                } else {
+                                  _playlists[pName]!.add(dirName);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
+                                }
+                                _savePlaylists();
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        }),
+                        if (_playlists.isEmpty || (searchQuery.isNotEmpty && filteredKeys.isEmpty))
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                            leading: const Icon(Icons.add_circle, color: Colors.tealAccent),
+                            title: const Text("Create New Setlist", style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _createPlaylist(autoAddDirName: dirName);
+                            },
                           ),
-                          onTap: () {
-                            setState(() {
-                              if (isInPlaylist) {
-                                _playlists[pName]!.remove(dirName);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Removed from $pName")));
-                              } else {
-                                _playlists[pName]!.add(dirName);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Added to $pName")));
-                              }
-                              _savePlaylists();
-                            });
-                            Navigator.pop(context);
-                          },
-                        );
-                      }).toList(),
+                      ],
                     ),
                   ),
                 ],
@@ -2614,12 +2645,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     _processZipFile(zipFile.path, filename).then((_) {
                       if (mounted) {
                         scaffold.showSnackBar(
-                          SnackBar(
-                            content: const Text('Song extracted and added to library!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
-                            duration: const Duration(seconds: 3), 
-                            backgroundColor: Colors.grey[900],
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          const SnackBar(
+                            content: Text('Song extracted and added to library!', textAlign: TextAlign.center), 
+                            duration: Duration(seconds: 3), 
                           )
                         );
                       }
