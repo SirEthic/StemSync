@@ -131,9 +131,11 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         });
       } else {
         debugPrint("Error fetching Drive files: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to fetch songs from Google Drive. Check link or API Key.'))
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to fetch songs from Google Drive. Check link or API Key.'))
+          );
+        }
       }
     } catch (e) {
       debugPrint("Exception fetching Drive files: $e");
@@ -156,9 +158,11 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         // Pass it back to main.dart to unzip and add to local library
         widget.onDownloadComplete(tempZip);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to download song.'))
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to download song.'))
+          );
+        }
       }
     } catch (e) {
       debugPrint("Exception downloading file: $e");
@@ -179,7 +183,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.1),
+                  color: Colors.teal.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.cloud_sync_rounded, size: 80, color: Colors.tealAccent),
@@ -208,7 +212,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 8,
-                    shadowColor: Colors.teal.withOpacity(0.5),
+                    shadowColor: Colors.teal.withValues(alpha: 0.5),
                   ),
                 ),
               )
@@ -226,7 +230,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
           decoration: BoxDecoration(
             color: const Color(0xFF1A1A1A),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.teal.withOpacity(0.3), width: 1),
+            border: Border.all(color: Colors.teal.withValues(alpha: 0.3), width: 1),
           ),
           child: Row(
             children: [
@@ -282,7 +286,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: isDownloading ? Colors.teal.withOpacity(0.2) : const Color(0xFF1A1A1A),
+                          color: isDownloading ? Colors.teal.withValues(alpha: 0.2) : const Color(0xFF1A1A1A),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
                         ),
@@ -292,7 +296,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                         ),
                       ),
                       title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
-                      subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withOpacity(0.7) : Colors.grey)),
+                      subtitle: Text(isDownloading ? "Downloading..." : "Tap to download", style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)),
                       trailing: isDownloading
                           ? const SizedBox(
                               width: 24,
