@@ -166,7 +166,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     setState(() { _isLoading = true; });
 
     try {
-      final url = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+mimeType='application/zip'&fields=files(id,name,size)&key=$_apiKey");
+      final url = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name+contains+'.zip'&fields=files(id,name,size)&key=$_apiKey");
       final response = await http.get(url);
 
       if (response.statusCode == 200) {

@@ -2610,6 +2610,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   onDownloadComplete: (zipFile) {
                     final filename = zipFile.path.split(Platform.pathSeparator).last;
                     _processZipFile(zipFile.path, filename).then((_) {
+                      if (mounted) {
+                        setState(() { _libraryTabIndex = 0; });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Song extracted and added to library!'))
+                        );
+                      }
                       // Optional: delete the temp zip file after extracting
                       try { zipFile.deleteSync(); } catch (_) {}
                     });
