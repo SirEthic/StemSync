@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:async';
@@ -467,11 +468,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   
   
 
+  StreamSubscription? _intentDataStreamSubscription;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
+    _setupSharingIntent();
     
     _autoSaveTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _saveMixState();
@@ -2225,6 +2229,28 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
   }
 
+  void _setupSharingIntent() {
+    // Listen to media sharing incoming files when the app is in memory
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty && value.first.path.endsWith('.zip')) {
+        final filename = value.first.path.split(Platform.pathSeparator).last;
+        _processZipFile(value.first.path, filename);
+      }
+    }, onError: (err) {
+      debugPrint("getIntentDataStream error: $err");
+    });
+
+    // Get the media sharing incoming files when the app is closed and opened via intent
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty && value.first.path.endsWith('.zip')) {
+        final filename = value.first.path.split(Platform.pathSeparator).last;
+        _processZipFile(value.first.path, filename);
+        // Clear the intent to avoid re-processing on hot restarts
+        ReceiveSharingIntent.instance.reset();
+      }
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
@@ -2235,6 +2261,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _intentDataStreamSubscription?.cancel();
     _ticker.dispose();
     _autoSaveTimer?.cancel();
     _countInTimer?.cancel();
