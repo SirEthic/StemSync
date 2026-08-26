@@ -1342,8 +1342,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           
           _chordScrollController.animateTo(
             targetPos,
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
           );
         }
       }
@@ -2693,11 +2693,15 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          itemCount: _chords.length > 0 ? _chords.length + 1 : 0,
+                          itemCount: _chords.length > 0 ? _chords.length + 2 : 0,
                           itemBuilder: (context, index) {
                              if (index == 0) {
                                 double firstStart = (_chords[0]['time'] as num).toDouble();
                                 return SizedBox(width: firstStart * 160.0);
+                             }
+                             if (index == _chords.length + 1) {
+                                // Add a trailing spacer so the last chord doesn't hit a maxScrollExtent wall
+                                return SizedBox(width: MediaQuery.of(context).size.width);
                              }
                              
                              int chordIdx = index - 1;
