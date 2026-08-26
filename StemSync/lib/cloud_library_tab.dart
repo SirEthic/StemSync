@@ -78,30 +78,68 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Connect Google Drive', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: "Paste Google Drive Folder Link",
-            hintStyle: const TextStyle(color: Colors.white54),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.content_paste, color: Colors.tealAccent),
-              onPressed: () async {
-                final clipboardData = await Clipboard.getData('text/plain');
-                if (clipboardData != null && clipboardData.text != null) {
-                  controller.text = clipboardData.text!;
-                }
-              },
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.teal.withValues(alpha: 0.15), shape: BoxShape.circle),
+              child: const Icon(Icons.add_link_rounded, color: Colors.tealAccent, size: 28),
             ),
-          ),
+            const SizedBox(width: 16),
+            const Expanded(child: Text('Connect Drive', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22))),
+          ],
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Paste the link to your band's public Google Drive folder containing the .zip stems.",
+              style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: "https://drive.google.com/...",
+                hintStyle: const TextStyle(color: Colors.white38),
+                filled: true,
+                fillColor: Colors.black45,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Colors.tealAccent, width: 1.5),
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.content_paste_rounded, color: Colors.tealAccent),
+                  tooltip: "Paste from clipboard",
+                  onPressed: () async {
+                    final clipboardData = await Clipboard.getData('text/plain');
+                    if (clipboardData != null && clipboardData.text != null) {
+                      controller.text = clipboardData.text!;
+                    }
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.only(right: 24, bottom: 24, left: 24, top: 8),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               final id = _extractFolderId(controller.text);
               if (id.isNotEmpty) {
@@ -109,7 +147,14 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('Connect', style: TextStyle(color: Colors.tealAccent)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              elevation: 4,
+            ),
+            child: const Text('Connect Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ],
       ),
