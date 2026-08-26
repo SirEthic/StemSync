@@ -9,8 +9,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CloudLibraryTab extends StatefulWidget {
   final Function(File) onDownloadComplete;
+  final Set<String> downloadedFolderNames;
   
-  const CloudLibraryTab({super.key, required this.onDownloadComplete});
+  const CloudLibraryTab({
+    super.key, 
+    required this.onDownloadComplete,
+    required this.downloadedFolderNames,
+  });
 
   @override
   State<CloudLibraryTab> createState() => _CloudLibraryTabState();
@@ -368,10 +373,28 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                       itemCount: _cloudSongs.length,
                       itemBuilder: (context, index) {
                         final song = _cloudSongs[index];
-                        final String name = song['name'].toString().replaceAll('.zip', '');
+                        final String rawName = song['name'].toString();
+                        final String name = rawName.replaceAll('.zip', '');
+                        final String folderName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
                         final String id = song['id'];
                         final bool isDownloading = _downloadingIds.contains(id);
+                        final bool isAlreadyDownloaded = widget.downloadedFolderNames.contains(folderName);
                         final double ratio = _downloadRatioMap[id] ?? 0.0;
+                        
+                        String subText = "Tap to download";
+                        if (isDownloading) {
+                          subText = _downloadProgressMap[id] ?? "Downloading...";
+                        } else if (isAlreadyDownloaded) {
+                          subText = "Downloaded (Tap to update)";
+                        }
+
+                        Color iconColor = Colors.white70;
+                        if (isDownloading) iconColor = Colors.tealAccent;
+                        else if (isAlreadyDownloaded) iconColor = Colors.greenAccent;
+
+                        IconData leadIcon = Icons.cloud_outlined;
+                        if (isDownloading) leadIcon = Icons.cloud_download;
+                        else if (isAlreadyDownloaded) leadIcon = Icons.cloud_done;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -398,17 +421,14 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                                       color: Colors.teal.withValues(alpha: 0.3),
                                     ),
                                   ),
-                                Icon(
-                                  isDownloading ? Icons.cloud_download : Icons.cloud_outlined, 
-                                  color: isDownloading ? Colors.tealAccent : Colors.white70
-                                ),
+                                Icon(leadIcon, color: iconColor),
                               ],
                             ),
                           ),
                           title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
                           subtitle: Text(
-                            isDownloading ? (_downloadProgressMap[id] ?? "Downloading...") : "Tap to download", 
-                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.grey)
+                            subText, 
+                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey))
                           ),
                           trailing: isDownloading
                               ? const SizedBox(
@@ -416,9 +436,36 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                                   height: 24,
                                   child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2),
                                 )
-                              : const Icon(Icons.download_rounded, color: Colors.tealAccent),
+                              : (isAlreadyDownloaded 
+                                  ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                                  : const Icon(Icons.download_rounded, color: Colors.tealAccent)),
                           onTap: () {
-                            if (!isDownloading) _downloadSong(id, song['name']);
+                            if (!isDownloading) {
+                              if (isAlreadyDownloaded) {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    backgroundColor: const Color(0xFF1A1A1A),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    title: const Text('Update Song?', style: TextStyle(color: Colors.white)),
+                                    content: const Text('This song is already downloaded. Do you want to download it again to grab the latest changes?', style: TextStyle(color: Colors.white70)),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(ctx);
+                                          _downloadSong(id, rawName);
+                                        },
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                                        child: const Text('Update'),
+                                      )
+                                    ],
+                                  )
+                                );
+                              } else {
+                                _downloadSong(id, rawName);
+                              }
+                            }
                           },
                         );
                       },

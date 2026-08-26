@@ -2607,6 +2607,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   ),
                 // TAB 2: CLOUD
                 CloudLibraryTab(
+                  downloadedFolderNames: _savedSongs.map((s) => (s['dir'] as Directory).path.split(Platform.pathSeparator).last).toSet(),
                   onDownloadComplete: (zipFile) {
                     final filename = zipFile.path.split(Platform.pathSeparator).last;
                     final scaffold = ScaffoldMessenger.of(context);
