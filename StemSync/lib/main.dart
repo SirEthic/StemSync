@@ -2782,6 +2782,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           builder: (context, activeIndex, _) {
                             bool isActive = index == activeIndex;
                             return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: () {
                                 double start = _lyrics[index].time;
                                 for (var t in _tracks) {
