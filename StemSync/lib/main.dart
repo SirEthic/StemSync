@@ -3051,7 +3051,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildBottomToggleBtn(Icons.format_quote, _showLyrics, () {
+                final wasOff = !_showLyrics;
                 setState(() => _showLyrics = !_showLyrics);
+                if (wasOff) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final newIdx = _activeLyricNotifier.value;
+                    if (newIdx >= 0 && _lyricScrollController.hasClients) {
+                      double offset = max(0.0, (newIdx * 75.0) - 100.0);
+                      _lyricScrollController.jumpTo(offset);
+                    }
+                  });
+                }
               }),
               const SizedBox(width: 32),
               _buildBottomToggleBtn(Icons.queue_music, _showChords, () {
