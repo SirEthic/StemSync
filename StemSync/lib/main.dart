@@ -211,6 +211,82 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     }
   }
   
+  void _showExportDialog() {
+    if (_playlists.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No setlists to export.")));
+      return;
+    }
+
+    final Map<String, bool> selected = {};
+    for (var key in _playlists.keys) {
+      selected[key] = true;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateSB) {
+            return AlertDialog(
+              backgroundColor: Colors.grey[900],
+              title: const Text("Export Setlists", style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: _playlists.keys.map((pName) {
+                    return CheckboxListTile(
+                      title: Text(pName, style: const TextStyle(color: Colors.white70)),
+                      value: selected[pName],
+                      activeColor: Colors.teal,
+                      checkColor: Colors.white,
+                      side: const BorderSide(color: Colors.grey),
+                      onChanged: (val) {
+                        setStateSB(() {
+                          selected[pName] = val ?? false;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final filteredPlaylists = Map<String, List<String>>.from(_playlists)
+                      ..removeWhere((key, value) => !(selected[key] ?? false));
+                    
+                    if (filteredPlaylists.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No setlists selected.")));
+                      return;
+                    }
+
+                    final String jsonStr = json.encode(filteredPlaylists);
+                    final docDir = await getApplicationDocumentsDirectory();
+                    final file = File("$($docDir.path)/setlists.json");
+                    await file.writeAsString(jsonStr);
+                    
+                    // ignore: deprecated_member_use
+                    Share.shareXFiles(
+                      // ignore: deprecated_member_use
+                      [XFile(file.path)], 
+                      text: 'Upload this to your band\'s Google Drive folder to instantly sync setlists!'
+                    );
+                  },
+                  child: const Text("Export", style: TextStyle(color: Colors.tealAccent)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   void _createPlaylist({String? autoAddDirName}) {
     TextEditingController ctrl = TextEditingController();
     showDialog(
@@ -2542,19 +2618,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               IconButton(
                 icon: const Icon(Icons.cloud_upload_outlined, color: Colors.tealAccent),
                 tooltip: "Export Setlists to Drive",
-                onPressed: () async {
-                  final String jsonStr = json.encode(_playlists);
-                  final docDir = await getApplicationDocumentsDirectory();
-                  final file = File('${docDir.path}/setlists.json');
-                  await file.writeAsString(jsonStr);
-                  
-                  // Use standard share to let user save to Drive
-                  // ignore: deprecated_member_use
-                  Share.shareXFiles(
-                    // ignore: deprecated_member_use
-                    [XFile(file.path)], 
-                    text: 'Upload this to your band\'s Google Drive folder to instantly sync setlists!'
-                  );
+                onPressed: () {
+                  _showExportDialog();
                 },
               ),
             PopupMenuButton<String>(
