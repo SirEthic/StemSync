@@ -2489,9 +2489,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         // --- SPECIFIC SETLIST VIEW ---
         final pList = _playlists[_activePlaylist!]!;
         List<Map<String, dynamic>> setlistSongs = [];
+        int missingCount = 0;
+        
         for (String dirName in pList) {
           final match = _savedSongs.where((s) => (s['dir'] as Directory).path.endsWith(dirName)).toList();
-          if (match.isNotEmpty) setlistSongs.add(match.first);
+          if (match.isNotEmpty) {
+            setlistSongs.add(match.first);
+          } else {
+            missingCount++;
+            setlistSongs.add({
+              'isMissing': true,
+              'title': dirName,
+            });
+          }
         }
         
         return Scaffold(
@@ -2504,7 +2514,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           ),
           body: Column(
             children: [
-              if (pList.length > setlistSongs.length)
+              if (missingCount > 0)
                 Container(
                   color: Colors.redAccent.withValues(alpha: 0.1),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -2514,7 +2524,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          "Missing ${pList.length - setlistSongs.length} song(s) from this setlist. Download them from the Cloud.",
+                          "Missing $missingCount song(s) from this setlist. Download them from the Cloud.",
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ),
@@ -2545,9 +2555,64 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       },
                       itemBuilder: (context, index) {
                         final songData = setlistSongs[index];
+                        
+                        // ❌ MISSING SONG GHOST ITEM
+                        if (songData['isMissing'] == true) {
+                          final dirName = songData['title'] as String;
+                          return ListTile(
+                            key: ValueKey('missing_$dirName\_$index'),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            leading: const CircleAvatar(backgroundColor: Colors.white10, child: Icon(Icons.cloud_off, color: Colors.grey)),
+                            title: Text(dirName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+                            subtitle: const Text("Not downloaded", style: TextStyle(color: Colors.redAccent)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.cloud_download_outlined, color: Colors.tealAccent),
+                              tooltip: "Go to Cloud",
+                              onPressed: () {
+                                setState(() {
+                                  _activePlaylist = null;
+                                  _libraryTabIndex = 2; // Jump to cloud tab
+                                });
+                              },
+                            ),
+                            onLongPress: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: const Color(0xFF1A1A1A),
+                                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                                builder: (ctx) {
+                                  return SafeArea(
+                                    child: Wrap(
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.only(left: 32, top: 24, bottom: 16),
+                                          child: Text("Missing Song Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                                        ),
+                                        ListTile(
+                                          contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                                          leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                          title: const Text('Remove from Setlist', style: TextStyle(color: Colors.redAccent)),
+                                          onTap: () {
+                                            Navigator.pop(ctx);
+                                            setState(() {
+                                              _playlists[_activePlaylist!]!.removeAt(index);
+                                              _savePlaylists();
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        }
+
+                        // ✅ LOCALLY AVAILABLE SONG ITEM
                         final dir = songData['dir'] as Directory;
                         final name = songData['title'] as String;
-                  final subtitleText = songData['subtitle'] as String;
+                        final subtitleText = songData['subtitle'] as String;
                   
                   final coverFile = File('${dir.path}/cover.jpg');
                   Widget leadingWidget = coverFile.existsSync()
