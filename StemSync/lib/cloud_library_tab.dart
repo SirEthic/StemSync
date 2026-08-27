@@ -238,22 +238,20 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Cancel Download?', style: TextStyle(color: Colors.white)),
-        content: Text('Are you sure you want to cancel downloading $songName? All progress will be lost.', style: const TextStyle(color: Colors.white70)),
+        backgroundColor: Colors.grey[900],
+        title: const Text('Cancel Download', style: TextStyle(color: Colors.white)),
+        content: Text('Are you sure you want to cancel downloading $songName? All progress will be lost.', style: const TextStyle(color: Colors.grey, fontSize: 12)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep', style: TextStyle(color: Colors.grey)),
+            child: const Text('Back', style: TextStyle(color: Colors.grey)),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _cancelDownload(fileId, fileName);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-            child: const Text('Cancel'),
+            child: const Text('Cancel Download', style: TextStyle(color: Colors.redAccent)),
           )
         ],
       ),
@@ -582,9 +580,13 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isPaused ? Colors.white54 : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey)))
                           ),
                           trailing: isDownloading || isPaused
-                              ? IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white30),
-                                  onPressed: () => _confirmCancelDownload(id, rawName, name),
+                              ? GestureDetector(
+                                  onTap: () => _confirmCancelDownload(id, rawName, name),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 16.0, top: 8.0, bottom: 8.0),
+                                    child: Icon(Icons.close, color: Colors.white30),
+                                  ),
                                 )
                               : (isAlreadyDownloaded 
                                   ? const Icon(Icons.check_circle, color: Colors.greenAccent)
