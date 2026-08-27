@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -49,6 +50,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await SoLoud.instance.init();
+  WakelockPlus.enable();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const StemSyncApp());
 }
@@ -1678,6 +1680,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       final lrcFile = File('${targetDir.path}/lyrics.lrc');
       if (lrcFile.existsSync()) {
         _parseLrcContent(lrcFile.readAsStringSync());
+      } else {
+        // Auto-fetch lyrics if not present locally
+        String songName = targetDir.path.split(Platform.pathSeparator).last;
+        String artistName = _songMetadata?['artist'] ?? "";
+        _fetchLyricsFromLRCLIB(targetDir, songName, artistName);
       }
 
       Map<String, double> savedVolumes = {};
