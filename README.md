@@ -6,9 +6,6 @@
 
 ## 🌟 Key Features
 
-*   **☁️ Cloud Band Drive:** Native Google Drive integration. Directly browse, stream, and download your band's shared ZIP stems and setlists right from the cloud tab without manual file transfers.
-*   **🤝 Collaborative Setlists:** Effortlessly sync JSON setlists across devices via the cloud. See which songs you're missing as grayed-out "ghost items" and download them directly from the setlist view with a single tap.
-*   **🛡️ Enterprise Proxy Support:** Full system proxy support for strict school and corporate Wi-Fi environments.
 *   **🎸 6-Part Stem Mixing:** StemSync is built to perfectly support **Ultimate Vocal Remover 5 (UVR5)** separation models. It dynamically handles 6 distinct parts: Vocals, Drums, Bass, Guitar, Piano, and Other.
 *   **🎛️ Real-Time Studio Mixer:** A fully interactive studio mixer built right into your phone. Features dynamic volume control, magnetic center-snapping stereo panning (L/R), and dedicated Mute & Solo buttons for every stem.
 *   **⏱️ Pitch & Tempo Manipulation:** Instantly shift the key of the song without affecting the tempo, or speed up/slow down the tempo without altering the pitch. Perfect for practice and rehearsal.
@@ -20,6 +17,10 @@
 *   **🥁 Integrated Metronome:** A built-in customizable metronome with subdivision support that synchronizes perfectly with the track's BPM.
 *   **💽 Rich Song Metadata:** Displays full track details including Album Art, Genre, Release Year, original key, and precise BPM.
 *   **💾 Persistent Mixes:** Your custom volume, pan, and mute states are saved automatically per song. When you load the track again, your mix is exactly how you left it.
+
+*   **☁️ Cloud Band Drive:** Native Google Drive integration. Directly browse, stream, and download your band's shared ZIP stems and setlists right from the cloud tab without manual file transfers.
+*   **🤝 Collaborative Setlists:** Effortlessly sync JSON setlists across devices via the cloud. See which songs you're missing as grayed-out "ghost items" and download them directly from the setlist view with a single tap.
+*   **🛡️ Enterprise Proxy Support:** Full system proxy support for strict school and corporate Wi-Fi environments.
 
 ## 📥 Installation & Usage
 
