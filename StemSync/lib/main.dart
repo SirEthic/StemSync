@@ -127,6 +127,7 @@ class MixerScreen extends StatefulWidget {
 }
 
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
   bool _isLoading = false;
   DateTime? _lastBackPressTime;
   
@@ -2573,6 +2574,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                                   _activePlaylist = null;
                                   _libraryTabIndex = 2; // Jump to cloud tab
                                 });
+                                Future.delayed(const Duration(milliseconds: 300), () {
+                                  _cloudTabKey.currentState?.startDownloadByName(dirName);
+                                });
                               },
                             ),
                             onLongPress: () {
@@ -2847,6 +2851,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 ),
                 // TAB 2: CLOUD
                 CloudLibraryTab(
+                  key: _cloudTabKey,
                   downloadedFolderNames: _savedSongs.map((s) => (s['dir'] as Directory).path.split(Platform.pathSeparator).last).toSet(),
                   onSetlistsSynced: (Map<String, List<String>> newSetlists) {
                     setState(() {

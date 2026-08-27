@@ -21,10 +21,10 @@ class CloudLibraryTab extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CloudLibraryTab> createState() => _CloudLibraryTabState();
+  State<CloudLibraryTab> createState() => CloudLibraryTabState();
 }
 
-class _CloudLibraryTabState extends State<CloudLibraryTab> {
+class CloudLibraryTabState extends State<CloudLibraryTab> {
   String _folderId = '';
   List<dynamic> _cloudSongs = [];
   bool _isLoading = false;
@@ -250,6 +250,32 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
       debugPrint("Exception fetching Drive files: $e");
     } finally {
       setState(() { _isLoading = false; });
+    }
+  }
+
+  void startDownloadByName(String songName) {
+    if (_cloudSongs.isEmpty) {
+      _fetchCloudSongs().then((_) {
+        _triggerDownloadByName(songName);
+      });
+    } else {
+      _triggerDownloadByName(songName);
+    }
+  }
+
+  void _triggerDownloadByName(String songName) {
+    try {
+      final file = _cloudSongs.firstWhere((f) {
+        String name = f['name'].toString();
+        if (name.toLowerCase().endsWith('.zip')) name = name.substring(0, name.length - 4);
+        return name == songName;
+      });
+      final fileId = file['id'];
+      final rawName = file['name'];
+      _downloadSong(fileId, rawName);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Started downloading '$songName' from Cloud!")));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Could not find '$songName' in Cloud.")));
     }
   }
 
