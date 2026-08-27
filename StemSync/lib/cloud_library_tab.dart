@@ -9,14 +9,16 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CloudLibraryTab extends StatefulWidget {
-  final Function(File) onDownloadComplete;
   final Set<String> downloadedFolderNames;
-  
+  final Function(File) onDownloadComplete;
+  final Function(Map<String, List<String>>) onSetlistsSynced;
+
   const CloudLibraryTab({
-    super.key, 
-    required this.onDownloadComplete,
+    Key? key,
     required this.downloadedFolderNames,
-  });
+    required this.onDownloadComplete,
+    required this.onSetlistsSynced,
+  }) : super(key: key);
 
   @override
   State<CloudLibraryTab> createState() => _CloudLibraryTabState();
@@ -208,6 +210,34 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
             }
           }
         });
+
+        // 🚀 COLLABORATIVE SETLISTS SYNC
+        try {
+          final setlistsUrl = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name='setlists.json'&fields=files(id)&key=$_apiKey");
+          final setlistsRes = await http.get(setlistsUrl);
+          if (setlistsRes.statusCode == 200) {
+            final setlistData = json.decode(setlistsRes.body);
+            final setlistFiles = setlistData['files'] as List;
+            if (setlistFiles.isNotEmpty) {
+              final fileId = setlistFiles.first['id'];
+              final dlUrl = Uri.parse("https://www.googleapis.com/drive/v3/files/$fileId?alt=media&key=$_apiKey");
+              final dlRes = await http.get(dlUrl);
+              if (dlRes.statusCode == 200) {
+                final Map<String, dynamic> rawMap = json.decode(dlRes.body);
+                Map<String, List<String>> result = {};
+                rawMap.forEach((key, value) {
+                  if (value is List) {
+                    result[key] = value.map((e) => e.toString()).toList();
+                  }
+                });
+                widget.onSetlistsSynced(result);
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint("Exception syncing setlists: $e");
+        }
+        
       } else {
         debugPrint("Error fetching Drive files: ${response.body}");
         if (mounted) {

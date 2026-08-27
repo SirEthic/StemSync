@@ -2538,6 +2538,25 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             },
           ),
           actions: [
+            if (_libraryTabIndex == 1)
+              IconButton(
+                icon: const Icon(Icons.cloud_upload_outlined, color: Colors.tealAccent),
+                tooltip: "Export Setlists to Drive",
+                onPressed: () async {
+                  final String jsonStr = json.encode(_playlists);
+                  final docDir = await getApplicationDocumentsDirectory();
+                  final file = File('${docDir.path}/setlists.json');
+                  await file.writeAsString(jsonStr);
+                  
+                  // Use standard share to let user save to Drive
+                  // ignore: deprecated_member_use
+                  Share.shareXFiles(
+                    // ignore: deprecated_member_use
+                    [XFile(file.path)], 
+                    text: 'Upload this to your band\'s Google Drive folder to instantly sync setlists!'
+                  );
+                },
+              ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.sort),
               onSelected: (String result) {
@@ -2649,6 +2668,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 // TAB 2: CLOUD
                 CloudLibraryTab(
                   downloadedFolderNames: _savedSongs.map((s) => (s['dir'] as Directory).path.split(Platform.pathSeparator).last).toSet(),
+                  onSetlistsSynced: (Map<String, List<String>> newSetlists) {
+                    setState(() {
+                      bool changed = false;
+                      newSetlists.forEach((key, value) {
+                        _playlists[key] = value;
+                        changed = true;
+                      });
+                      if (changed) {
+                        _savePlaylists();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Synced setlists from Google Drive!')));
+                      }
+                    });
+                  },
                   onDownloadComplete: (zipFile) {
                     final filename = zipFile.path.split(Platform.pathSeparator).last;
                     final scaffold = ScaffoldMessenger.of(context);
