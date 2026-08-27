@@ -2670,10 +2670,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                   );
                 },
               ),
-        );
-      }
+            ),
+          ],
+        ),
+      );
+    }
 
-      // --- MAIN LIBRARY TABS VIEW ---
+    // --- MAIN LIBRARY TABS VIEW ---
       var filteredSongs = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
       if (_sortMode == 'A-Z') {
         filteredSongs.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
