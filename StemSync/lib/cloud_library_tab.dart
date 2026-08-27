@@ -28,6 +28,8 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   final Set<String> _downloadingIds = {};
   final Map<String, String> _downloadProgressMap = {};
   final Map<String, double> _downloadRatioMap = {};
+  final Map<String, http.Client> _activeClients = {};
+  final Map<String, bool> _pausedDownloads = {};
   
   // Use API key from local .env file to protect it from GitHub
   String get _apiKey => dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
@@ -201,42 +203,80 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     return "${mb.toStringAsFixed(1)} MB";
   }
 
-    Future<void> _downloadSong(String fileId, String fileName) async {
+  void _pauseDownload(String fileId) {
+    if (_downloadingIds.contains(fileId)) {
+      _pausedDownloads[fileId] = true;
+    }
+  }
+
+  Future<void> _downloadSong(String fileId, String fileName) async {
+    _pausedDownloads[fileId] = false;
     setState(() { 
       _downloadingIds.add(fileId); 
-      _downloadProgressMap[fileId] = "Starting...";
-      _downloadRatioMap[fileId] = 0.0;
+      // Do not reset _downloadRatioMap so the progress bar doesn't reset to 0
+      if (!_downloadProgressMap.containsKey(fileId) || _downloadProgressMap[fileId]!.startsWith('Paused')) {
+        _downloadProgressMap[fileId] = "Connecting...";
+      }
     });
     
     try {
+      final docDir = await getApplicationDocumentsDirectory();
+      final tempZip = File('${docDir.path}/$fileName');
+      int existingBytes = 0;
+      if (tempZip.existsSync()) {
+        existingBytes = tempZip.lengthSync();
+      }
+
       final url = Uri.parse("https://www.googleapis.com/drive/v3/files/$fileId?alt=media&key=$_apiKey");
       final request = http.Request('GET', url);
+      
+      if (existingBytes > 0) {
+        request.headers['Range'] = 'bytes=$existingBytes-';
+      }
+
       final client = http.Client();
+      _activeClients[fileId] = client;
       final response = await client.send(request);
 
-      if (response.statusCode == 200) {
-        final totalBytes = response.contentLength ?? 0;
+      if (response.statusCode == 200 || response.statusCode == 206) {
+        int totalBytes = 0;
         int receivedBytes = 0;
-        int lastUpdatedBytes = 0;
-        
-        final docDir = await getApplicationDocumentsDirectory();
-        final tempZip = File('${docDir.path}/$fileName');
-        final sink = tempZip.openWrite();
+
+        if (response.statusCode == 206) {
+          // Resuming partial content
+          final contentRange = response.headers['content-range'];
+          if (contentRange != null && contentRange.contains('/')) {
+            totalBytes = int.tryParse(contentRange.split('/').last) ?? 0;
+          }
+          receivedBytes = existingBytes;
+        } else {
+          // Fresh start or server ignored range
+          totalBytes = response.contentLength ?? 0;
+          receivedBytes = 0;
+          existingBytes = 0; 
+        }
+
+        int lastUpdatedBytes = receivedBytes;
+        final sink = tempZip.openWrite(mode: existingBytes > 0 && response.statusCode == 206 ? FileMode.append : FileMode.write);
         
         await for (final chunk in response.stream) {
+          if (_pausedDownloads[fileId] == true) {
+            break; // Break the stream to pause
+          }
           receivedBytes += chunk.length;
           sink.add(chunk);
           
-          // Only update UI every 500KB to avoid jank
           if (receivedBytes - lastUpdatedBytes > 500 * 1024 || receivedBytes == totalBytes) {
             lastUpdatedBytes = receivedBytes;
             if (totalBytes > 0) {
               final String progStr = "${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}";
-              setState(() {
-                _downloadProgressMap[fileId] = progStr;
-                _downloadRatioMap[fileId] = receivedBytes / totalBytes;
-              });
-            } else {
+              if (mounted) {
+                setState(() {
+                  _downloadProgressMap[fileId] = progStr;
+                  _downloadRatioMap[fileId] = receivedBytes / totalBytes;
+                });
+              }
+            } else if (mounted) {
               setState(() {
                 _downloadProgressMap[fileId] = "${_formatBytes(receivedBytes)} downloaded";
               });
@@ -246,6 +286,17 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         
         await sink.close();
         client.close();
+        _activeClients.remove(fileId);
+
+        if (_pausedDownloads[fileId] == true) {
+          if (mounted) {
+            setState(() {
+              _downloadingIds.remove(fileId);
+              _downloadProgressMap[fileId] = "Paused at ${_formatBytes(receivedBytes)}";
+            });
+          }
+          return;
+        }
         
         // Pass it back to main.dart to unzip and add to local library
         widget.onDownloadComplete(tempZip);
@@ -378,22 +429,27 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                         final String folderName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
                         final String id = song['id'];
                         final bool isDownloading = _downloadingIds.contains(id);
+                        final bool isPaused = !isDownloading && (_downloadProgressMap[id]?.startsWith('Paused') ?? false);
                         final bool isAlreadyDownloaded = widget.downloadedFolderNames.contains(folderName);
                         final double ratio = _downloadRatioMap[id] ?? 0.0;
                         
                         String subText = "Tap to download";
                         if (isDownloading) {
                           subText = _downloadProgressMap[id] ?? "Downloading...";
+                        } else if (isPaused) {
+                          subText = _downloadProgressMap[id] ?? "Paused";
                         } else if (isAlreadyDownloaded) {
                           subText = "Downloaded (Tap to update)";
                         }
 
                         Color iconColor = Colors.white70;
                         if (isDownloading) iconColor = Colors.tealAccent;
+                        else if (isPaused) iconColor = Colors.orangeAccent;
                         else if (isAlreadyDownloaded) iconColor = Colors.greenAccent;
 
                         IconData leadIcon = Icons.cloud_outlined;
                         if (isDownloading) leadIcon = Icons.cloud_download;
+                        else if (isPaused) leadIcon = Icons.pause_circle_outline;
                         else if (isAlreadyDownloaded) leadIcon = Icons.cloud_done;
 
                         return ListTile(
@@ -404,13 +460,13 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF1A1A1A),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isDownloading ? Colors.teal : Colors.white12),
+                              border: Border.all(color: isDownloading || isPaused ? Colors.teal : Colors.white12),
                             ),
                             clipBehavior: Clip.hardEdge,
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                if (isDownloading)
+                                if (isDownloading || isPaused)
                                   Positioned(
                                     bottom: 0,
                                     left: 0,
@@ -418,29 +474,37 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 300),
                                       height: 50 * ratio,
-                                      color: Colors.teal.withValues(alpha: 0.3),
+                                      color: isPaused ? Colors.orange.withValues(alpha: 0.3) : Colors.teal.withValues(alpha: 0.3),
                                     ),
                                   ),
                                 Icon(leadIcon, color: iconColor),
                               ],
                             ),
                           ),
-                          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : Colors.white)),
+                          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading || isPaused ? Colors.tealAccent : Colors.white)),
                           subtitle: Text(
                             subText, 
-                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey))
+                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isPaused ? Colors.orangeAccent.withValues(alpha: 0.7) : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey)))
                           ),
                           trailing: isDownloading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2),
+                              ? IconButton(
+                                  icon: const Icon(Icons.pause, color: Colors.orangeAccent),
+                                  onPressed: () => _pauseDownload(id),
                                 )
-                              : (isAlreadyDownloaded 
-                                  ? const Icon(Icons.check_circle, color: Colors.greenAccent)
-                                  : const Icon(Icons.download_rounded, color: Colors.tealAccent)),
+                              : isPaused
+                                  ? IconButton(
+                                      icon: const Icon(Icons.play_arrow, color: Colors.tealAccent),
+                                      onPressed: () => _downloadSong(id, rawName),
+                                    )
+                                  : (isAlreadyDownloaded 
+                                      ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                                      : const Icon(Icons.download_rounded, color: Colors.tealAccent)),
                           onTap: () {
-                            if (!isDownloading) {
+                            if (isDownloading) {
+                              _pauseDownload(id);
+                            } else if (isPaused) {
+                              _downloadSong(id, rawName);
+                            } else {
                               if (isAlreadyDownloaded) {
                                 showDialog(
                                   context: context,
