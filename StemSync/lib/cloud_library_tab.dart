@@ -192,9 +192,18 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
             if (tempZip.existsSync()) {
               final size = tempZip.lengthSync();
               final total = int.tryParse(file['size']?.toString() ?? '0') ?? 0;
-              if (size > 0 && total > 0 && size < total) {
-                _downloadProgressMap[file['id']] = "Paused at ${_formatBytes(size)} / ${_formatBytes(total)}";
-                _downloadRatioMap[file['id']] = size / total;
+              if (size > 0) {
+                if (total > 0 && size >= total) {
+                  _downloadProgressMap[file['id']] = "Downloaded (Tap to extract)";
+                  _downloadRatioMap[file['id']] = 1.0;
+                } else {
+                  _downloadProgressMap[file['id']] = total > 0 
+                      ? "Paused at ${_formatBytes(size)} / ${_formatBytes(total)}"
+                      : "Paused at ${_formatBytes(size)}";
+                  if (total > 0) {
+                    _downloadRatioMap[file['id']] = size / total;
+                  }
+                }
               }
             }
           }
@@ -340,7 +349,9 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
           if (mounted) {
             setState(() {
               _downloadingIds.remove(fileId);
-              _downloadProgressMap[fileId] = "Paused at ${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}";
+              _downloadProgressMap[fileId] = totalBytes > 0 
+                  ? "Paused at ${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}"
+                  : "Paused at ${_formatBytes(receivedBytes)}";
             });
           }
           return;
@@ -477,8 +488,8 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                         final String folderName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
                         final String id = song['id'];
                         final bool isDownloading = _downloadingIds.contains(id);
-                        final bool isPaused = !isDownloading && (_downloadProgressMap[id]?.startsWith('Paused') ?? false);
                         final bool isAlreadyDownloaded = widget.downloadedFolderNames.contains(folderName);
+                        final bool isPaused = !isDownloading && _downloadProgressMap.containsKey(id);
                         final double ratio = _downloadRatioMap[id] ?? 0.0;
                         
                         String subText = "Tap to download";
