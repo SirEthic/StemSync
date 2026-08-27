@@ -2617,54 +2617,72 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       ),
                       
                 // TAB 1: SETLISTS
-                Stack(
+                Column(
                   children: [
-                    filteredPlaylists.isEmpty
-                      ? Center(child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey)))
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          itemCount: filteredPlaylists.length,
-                          itemBuilder: (context, index) {
-                            final pName = filteredPlaylists[index];
-                            final songCount = _playlists[pName]!.length;
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              leading: const CircleAvatar(
-                                backgroundColor: Colors.black26,
-                                child: Icon(Icons.queue_music, color: Colors.tealAccent),
-                              ),
-                              title: Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                              subtitle: Text("$songCount song${songCount == 1 ? '' : 's'}", style: const TextStyle(color: Colors.grey)),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.grey),
-                                onPressed: () async {
-                                  bool confirm = await showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: Colors.grey[900],
-                                      title: const Text("Delete Setlist", style: TextStyle(color: Colors.white)),
-                                      content: const Text("Are you sure you want to delete this setlist? Your separated songs will remain safely in your library.", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
-                                      ],
-                                    ),
-                                  ) ?? false;
-                                  
-                                  if (confirm) {
-                                    setState(() {
-                                      _playlists.remove(pName);
-                                      _savePlaylists();
-                                    });
-                                  }
-                                },
-                              ),
-                              onTap: () => setState(() => _activePlaylist = pName),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      color: Colors.tealAccent.withValues(alpha: 0.05),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.tealAccent, size: 20),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "To sync collaborative setlists from your band, go to the Cloud tab and pull to refresh.",
+                              style: TextStyle(color: Colors.white70, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: filteredPlaylists.isEmpty
+                        ? Center(child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey)))
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 80),
+                            itemCount: filteredPlaylists.length,
+                            itemBuilder: (context, index) {
+                              final pName = filteredPlaylists[index];
+                              final songCount = _playlists[pName]!.length;
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                leading: const CircleAvatar(
+                                  backgroundColor: Colors.black26,
+                                  child: Icon(Icons.queue_music, color: Colors.tealAccent),
+                                ),
+                                title: Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                subtitle: Text("$songCount song${songCount == 1 ? '' : 's'}", style: const TextStyle(color: Colors.grey)),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.grey),
+                                  onPressed: () async {
+                                    bool confirm = await showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        backgroundColor: Colors.grey[900],
+                                        title: const Text("Delete Setlist", style: TextStyle(color: Colors.white)),
+                                        content: const Text("Are you sure you want to delete this setlist? Your separated songs will remain safely in your library.", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+                                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
+                                        ],
+                                      ),
+                                    ) ?? false;
+                                    
+                                    if (confirm) {
+                                      setState(() {
+                                        _playlists.remove(pName);
+                                        _savePlaylists();
+                                      });
+                                    }
+                                  },
+                                ),
+                                onTap: () => setState(() => _activePlaylist = pName),
+                              );
+                            },
+                          ),
+                    ),
+                  ],
+                ),
                 // TAB 2: CLOUD
                 CloudLibraryTab(
                   downloadedFolderNames: _savedSongs.map((s) => (s['dir'] as Directory).path.split(Platform.pathSeparator).last).toSet(),
