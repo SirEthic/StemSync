@@ -238,22 +238,20 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Cancel Download?', style: TextStyle(color: Colors.white)),
-        content: Text('Are you sure you want to cancel downloading $songName? All progress will be lost.', style: const TextStyle(color: Colors.white70)),
+        backgroundColor: Colors.grey[900],
+        title: const Text('Cancel Download', style: TextStyle(color: Colors.white)),
+        content: Text('Are you sure you want to cancel downloading $songName? All progress will be lost.', style: const TextStyle(color: Colors.grey, fontSize: 12)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Keep', style: TextStyle(color: Colors.grey)),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _cancelDownload(fileId, fileName);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-            child: const Text('Cancel Download'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.redAccent)),
           )
         ],
       ),
