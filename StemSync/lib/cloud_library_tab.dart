@@ -234,6 +234,32 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     }
   }
 
+  void _confirmCancelDownload(String fileId, String fileName, String songName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Cancel Download?', style: TextStyle(color: Colors.white)),
+        content: Text('Are you sure you want to cancel downloading $songName? All progress will be lost.', style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Keep', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _cancelDownload(fileId, fileName);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            child: const Text('Cancel'),
+          )
+        ],
+      ),
+    );
+  }
+
   Future<void> _cancelDownload(String fileId, String fileName) async {
     if (_downloadingIds.contains(fileId)) {
       _cancelledDownloads[fileId] = true;
@@ -555,37 +581,14 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             subText, 
                             style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isPaused ? Colors.white54 : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey)))
                           ),
-                          trailing: isDownloading
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.white30),
-                                      onPressed: () => _cancelDownload(id, rawName),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.pause, color: Colors.white70),
-                                      onPressed: () => _pauseDownload(id),
-                                    ),
-                                  ],
+                          trailing: isDownloading || isPaused
+                              ? IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.white30),
+                                  onPressed: () => _confirmCancelDownload(id, rawName, name),
                                 )
-                              : isPaused
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.close, color: Colors.white30),
-                                          onPressed: () => _cancelDownload(id, rawName),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.play_arrow, color: Colors.tealAccent),
-                                          onPressed: () => _downloadSong(id, rawName),
-                                        ),
-                                      ],
-                                    )
-                                  : (isAlreadyDownloaded 
-                                      ? const Icon(Icons.check_circle, color: Colors.greenAccent)
-                                      : const Icon(Icons.download_rounded, color: Colors.tealAccent)),
+                              : (isAlreadyDownloaded 
+                                  ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                                  : const Icon(Icons.download_rounded, color: Colors.tealAccent)),
                           onTap: () {
                             if (isDownloading) {
                               _pauseDownload(id);
