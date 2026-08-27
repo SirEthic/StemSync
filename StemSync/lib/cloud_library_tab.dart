@@ -180,7 +180,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
 
     try {
       final url = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name+contains+'.zip'&fields=files(id,name,size)&key=$_apiKey");
-      final response = await http.get(url);
+      final client = await ProxyClient.createClient(url.toString()); final response = await client.get(url); client.close();
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -214,14 +214,14 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
         // 🚀 COLLABORATIVE SETLISTS SYNC
         try {
           final setlistsUrl = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name='setlists.json'&fields=files(id)&key=$_apiKey");
-          final setlistsRes = await http.get(setlistsUrl);
+          final client = await ProxyClient.createClient(setlistsUrl.toString()); final setlistsRes = await client.get(setlistsUrl); client.close();
           if (setlistsRes.statusCode == 200) {
             final setlistData = json.decode(setlistsRes.body);
             final setlistFiles = setlistData['files'] as List;
             if (setlistFiles.isNotEmpty) {
               final fileId = setlistFiles.first['id'];
               final dlUrl = Uri.parse("https://www.googleapis.com/drive/v3/files/$fileId?alt=media&key=$_apiKey");
-              final dlRes = await http.get(dlUrl);
+              final client = await ProxyClient.createClient(dlUrl.toString()); final dlRes = await client.get(dlUrl); client.close();
               if (dlRes.statusCode == 200) {
                 final Map<String, dynamic> rawMap = json.decode(dlRes.body);
                 Map<String, List<String>> result = {};
