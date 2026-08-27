@@ -6,6 +6,9 @@
 
 ## 🌟 Key Features
 
+*   **☁️ Cloud Band Drive:** Native Google Drive integration. Directly browse, stream, and download your band's shared ZIP stems and setlists right from the cloud tab without manual file transfers.
+*   **🤝 Collaborative Setlists:** Effortlessly sync JSON setlists across devices via the cloud. See which songs you're missing as grayed-out "ghost items" and download them directly from the setlist view with a single tap.
+*   **🛡️ Enterprise Proxy Support:** Full system proxy support for strict school and corporate Wi-Fi environments.
 *   **🎸 6-Part Stem Mixing:** StemSync is built to perfectly support **Ultimate Vocal Remover 5 (UVR5)** separation models. It dynamically handles 6 distinct parts: Vocals, Drums, Bass, Guitar, Piano, and Other.
 *   **🎛️ Real-Time Studio Mixer:** A fully interactive studio mixer built right into your phone. Features dynamic volume control, magnetic center-snapping stereo panning (L/R), and dedicated Mute & Solo buttons for every stem.
 *   **⏱️ Pitch & Tempo Manipulation:** Instantly shift the key of the song without affecting the tempo, or speed up/slow down the tempo without altering the pitch. Perfect for practice and rehearsal.
@@ -32,9 +35,10 @@ Before using StemSync, you must separate your track. Use [Ultimate Vocal Remover
 4. The packager will automatically analyze the audio, fetch synchronized lyrics and chords, fingerprint the song via Shazam for metadata, and compile everything into a single `.zip` StemSync project file.
 
 ### 3. The StemSync App (Android)
-1. Download the latest `StemSync_v1.0.0_arm64.apk` from the [Releases](https://github.com/SirEthic/StemSync/releases) page and install it on your Android phone.
-2. Transfer the compiled `.zip` project file(s) from your PC onto your phone.
-3. Open StemSync, tap the **Library Add (FAB)** icon, select the `.zip` file, and start mixing!
+1. Download the latest `StemSync-v1.4.0-arm64-v8a.apk` (or your device's architecture) from the [Releases](https://github.com/SirEthic/StemSync/releases) page and install it on your Android phone.
+2. Upload the compiled `.zip` project file(s) from the Packager to your shared Google Drive folder.
+3. Open StemSync, navigate to the **Cloud Tab**, enter your band's shared Google Drive Folder ID, and tap to seamlessly download your songs.
+4. Start mixing and creating collaborative setlists!
 
 ## 🛠️ Built With
 
