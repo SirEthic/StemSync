@@ -356,19 +356,29 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
           }
           return;
         }
-        
         // Pass it back to main.dart to unzip and add to local library
+        if (mounted) {
+          setState(() {
+            _downloadingIds.remove(fileId);
+            _downloadProgressMap.remove(fileId);
+            _downloadRatioMap.remove(fileId);
+          });
+        }
         widget.onDownloadComplete(tempZip);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed to download song.'))
           );
+          setState(() {
+            _downloadingIds.remove(fileId);
+            _downloadProgressMap.remove(fileId);
+            _downloadRatioMap.remove(fileId);
+          });
         }
       }
     } catch (e) {
       debugPrint("Exception downloading file: $e");
-    } finally {
       if (mounted) {
         setState(() { 
           _downloadingIds.remove(fileId); 
