@@ -1760,7 +1760,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       final lrcFile = File('${targetDir.path}/lyrics.lrc');
       if (lrcFile.existsSync()) {
         _parseLrcContent(lrcFile.readAsStringSync());
-
+      }
 
 
 
