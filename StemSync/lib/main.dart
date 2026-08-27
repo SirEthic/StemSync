@@ -2502,22 +2502,51 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             ),
             title: Text(_activePlaylist!, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
-          body: pList.isEmpty 
-            ? const Center(child: Text("Setlist is empty.\nGo to 'Songs' to add some!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
-            : ReorderableListView.builder(
-                itemCount: setlistSongs.length,
-                onReorder: (oldIndex, newIndex) {
-                  setState(() {
-                    if (newIndex > oldIndex) newIndex -= 1;
-                    final item = _playlists[_activePlaylist!]!.removeAt(oldIndex);
-                    _playlists[_activePlaylist!]!.insert(newIndex, item);
-                    _savePlaylists();
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final songData = setlistSongs[index];
-                  final dir = songData['dir'] as Directory;
-                  final name = songData['title'] as String;
+          body: Column(
+            children: [
+              if (pList.length > setlistSongs.length)
+                Container(
+                  color: Colors.redAccent.withValues(alpha: 0.1),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "Missing ${pList.length - setlistSongs.length} song(s) from this setlist. Download them from the Cloud.",
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _activePlaylist = null;
+                            _libraryTabIndex = 2;
+                          });
+                        },
+                        child: const Text("Go to Cloud", style: TextStyle(color: Colors.redAccent)),
+                      )
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: pList.isEmpty 
+                  ? const Center(child: Text("Setlist is empty.\nGo to 'Songs' to add some!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
+                  : ReorderableListView.builder(
+                      itemCount: setlistSongs.length,
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final item = _playlists[_activePlaylist!]!.removeAt(oldIndex);
+                          _playlists[_activePlaylist!]!.insert(newIndex, item);
+                          _savePlaylists();
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final songData = setlistSongs[index];
+                        final dir = songData['dir'] as Directory;
+                        final name = songData['title'] as String;
                   final subtitleText = songData['subtitle'] as String;
                   
                   final coverFile = File('${dir.path}/cover.jpg');
