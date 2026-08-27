@@ -2794,7 +2794,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              "To sync collaborative setlists from your band, go to the Cloud tab and pull to refresh.",
+                              "Pull down to sync collaborative setlists from your band's Google Drive.",
                               style: TextStyle(color: Colors.white70, fontSize: 13),
                             ),
                           ),
@@ -2802,9 +2802,38 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       ),
                     ),
                     Expanded(
-                      child: filteredPlaylists.isEmpty
-                        ? Center(child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey)))
-                        : ListView.builder(
+                      child: RefreshIndicator(
+                        color: Colors.tealAccent,
+                        backgroundColor: const Color(0xFF1A1A1A),
+                        onRefresh: () async {
+                          if (_cloudTabKey.currentState != null) {
+                            await _cloudTabKey.currentState!.fetchCloudSongs();
+                          } else {
+                            setState(() { _libraryTabIndex = 2; });
+                            await Future.delayed(const Duration(milliseconds: 100));
+                            if (_cloudTabKey.currentState != null) {
+                              await _cloudTabKey.currentState!.fetchCloudSongs();
+                            }
+                            setState(() { _libraryTabIndex = 1; });
+                          }
+                        },
+                        child: filteredPlaylists.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                SizedBox(
+                                  height: 400,
+                                  child: Center(
+                                    child: Text(_playlists.isEmpty ? "No Setlists created yet." : "No Setlists match your search.", style: const TextStyle(color: Colors.grey))
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+
+
+
                             padding: const EdgeInsets.only(bottom: 80),
                             itemCount: filteredPlaylists.length,
                             itemBuilder: (context, index) {
@@ -2846,10 +2875,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                               );
                             },
                           ),
-                    ),
+                        ),
+                      ),
                   ],
                 ),
-                // TAB 2: CLOUD
+
+
                 CloudLibraryTab(
                   key: _cloudTabKey,
                   downloadedFolderNames: _savedSongs.map((s) => (s['dir'] as Directory).path.split(Platform.pathSeparator).last).toSet(),

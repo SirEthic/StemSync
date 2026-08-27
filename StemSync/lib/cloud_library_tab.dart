@@ -50,7 +50,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
       _folderId = prefs.getString('drive_folder_id') ?? '';
     });
     if (_folderId.isNotEmpty) {
-      _fetchCloudSongs();
+      fetchCloudSongs();
     }
   }
 
@@ -60,7 +60,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     setState(() {
       _folderId = id;
     });
-    _fetchCloudSongs();
+    fetchCloudSongs();
   }
 
   String _extractFolderId(String url) {
@@ -174,7 +174,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     );
   }
 
-  Future<void> _fetchCloudSongs() async {
+  Future<void> fetchCloudSongs() async {
     if (_folderId.isEmpty) return;
     setState(() { _isLoading = true; });
 
@@ -255,7 +255,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
 
   void startDownloadByName(String songName) {
     if (_cloudSongs.isEmpty) {
-      _fetchCloudSongs().then((_) {
+      fetchCloudSongs().then((_) {
         _triggerDownloadByName(songName);
       });
     } else {
@@ -557,7 +557,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
             : RefreshIndicator(
                 color: Colors.tealAccent,
                 backgroundColor: const Color(0xFF1A1A1A),
-                onRefresh: _fetchCloudSongs,
+                onRefresh: fetchCloudSongs,
                 child: _cloudSongs.isEmpty
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
