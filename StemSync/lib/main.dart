@@ -268,7 +268,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
                     final String jsonStr = json.encode(filteredPlaylists);
                     final docDir = await getApplicationDocumentsDirectory();
-                    final file = File("$($docDir.path)/setlists.json");
+                    final file = File('${docDir.path}/setlists.json');
                     await file.writeAsString(jsonStr);
                     
                     // ignore: deprecated_member_use
