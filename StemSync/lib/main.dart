@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'proxy_client.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -1299,7 +1300,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       if (artistName != null && artistName.isNotEmpty) query += " $artistName";
       
       final uri = Uri.parse("https://lrclib.net/api/search?q=${Uri.encodeComponent(query)}");
-      final response = await http.get(uri);
+      final client = await ProxyClient.createClient(uri.toString());
+      final response = await client.get(uri);
+      client.close();
       
       if (response.statusCode == 200) {
         final List<dynamic> results = jsonDecode(response.body);

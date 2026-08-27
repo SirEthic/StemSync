@@ -302,6 +302,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  flutter_system_proxy:
+    dependency: "direct main"
+    description:
+      name: flutter_system_proxy
+      sha256: "920b97b735439a1c589e15904a4ac467d8a118929500fa9b310f0f3c833ffdce"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter

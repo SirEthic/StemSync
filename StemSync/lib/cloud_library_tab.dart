@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'proxy_client.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -30,6 +31,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
   final Map<String, double> _downloadRatioMap = {};
   final Map<String, http.Client> _activeClients = {};
   final Map<String, bool> _pausedDownloads = {};
+  final Map<String, bool> _cancelledDownloads = {};
   
   // Use API key from local .env file to protect it from GitHub
   String get _apiKey => dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
@@ -180,8 +182,22 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final docDir = await getApplicationDocumentsDirectory();
+        
         setState(() {
           _cloudSongs = data['files'] ?? [];
+          for (var file in _cloudSongs) {
+            final rawName = file['name'];
+            final tempZip = File('${docDir.path}/$rawName');
+            if (tempZip.existsSync()) {
+              final size = tempZip.lengthSync();
+              final total = int.tryParse(file['size']?.toString() ?? '0') ?? 0;
+              if (size > 0 && total > 0 && size < total) {
+                _downloadProgressMap[file['id']] = "Paused at ${_formatBytes(size)} / ${_formatBytes(total)}";
+                _downloadRatioMap[file['id']] = size / total;
+              }
+            }
+          }
         });
       } else {
         debugPrint("Error fetching Drive files: ${response.body}");
@@ -209,8 +225,25 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
     }
   }
 
+  Future<void> _cancelDownload(String fileId, String fileName) async {
+    if (_downloadingIds.contains(fileId)) {
+      _cancelledDownloads[fileId] = true;
+    } else {
+      setState(() {
+        _downloadProgressMap.remove(fileId);
+        _downloadRatioMap.remove(fileId);
+      });
+      final docDir = await getApplicationDocumentsDirectory();
+      final tempZip = File('${docDir.path}/$fileName');
+      if (tempZip.existsSync()) {
+        try { tempZip.deleteSync(); } catch (_) {}
+      }
+    }
+  }
+
   Future<void> _downloadSong(String fileId, String fileName) async {
     _pausedDownloads[fileId] = false;
+    _cancelledDownloads[fileId] = false;
     setState(() { 
       _downloadingIds.add(fileId); 
       // Do not reset _downloadRatioMap so the progress bar doesn't reset to 0
@@ -234,7 +267,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         request.headers['Range'] = 'bytes=$existingBytes-';
       }
 
-      final client = http.Client();
+      final client = await ProxyClient.createClient(url.toString());
       _activeClients[fileId] = client;
       final response = await client.send(request);
 
@@ -260,8 +293,8 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         final sink = tempZip.openWrite(mode: existingBytes > 0 && response.statusCode == 206 ? FileMode.append : FileMode.write);
         
         await for (final chunk in response.stream) {
-          if (_pausedDownloads[fileId] == true) {
-            break; // Break the stream to pause
+          if (_pausedDownloads[fileId] == true || _cancelledDownloads[fileId] == true) {
+            break; // Break the stream to pause or cancel
           }
           receivedBytes += chunk.length;
           sink.add(chunk);
@@ -288,11 +321,26 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
         client.close();
         _activeClients.remove(fileId);
 
+        if (_cancelledDownloads[fileId] == true) {
+          _cancelledDownloads.remove(fileId);
+          if (tempZip.existsSync()) {
+            try { tempZip.deleteSync(); } catch (_) {}
+          }
+          if (mounted) {
+            setState(() {
+              _downloadingIds.remove(fileId);
+              _downloadProgressMap.remove(fileId);
+              _downloadRatioMap.remove(fileId);
+            });
+          }
+          return;
+        }
+
         if (_pausedDownloads[fileId] == true) {
           if (mounted) {
             setState(() {
               _downloadingIds.remove(fileId);
-              _downloadProgressMap[fileId] = "Paused at ${_formatBytes(receivedBytes)}";
+              _downloadProgressMap[fileId] = "Paused at ${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}";
             });
           }
           return;
@@ -444,7 +492,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
 
                         Color iconColor = Colors.white70;
                         if (isDownloading) iconColor = Colors.tealAccent;
-                        else if (isPaused) iconColor = Colors.orangeAccent;
+                        else if (isPaused) iconColor = Colors.white54;
                         else if (isAlreadyDownloaded) iconColor = Colors.greenAccent;
 
                         IconData leadIcon = Icons.cloud_outlined;
@@ -460,7 +508,7 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF1A1A1A),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isDownloading || isPaused ? Colors.teal : Colors.white12),
+                              border: Border.all(color: isDownloading ? Colors.teal : (isPaused ? Colors.white24 : Colors.white12)),
                             ),
                             clipBehavior: Clip.hardEdge,
                             child: Stack(
@@ -474,27 +522,45 @@ class _CloudLibraryTabState extends State<CloudLibraryTab> {
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 300),
                                       height: 50 * ratio,
-                                      color: isPaused ? Colors.orange.withValues(alpha: 0.3) : Colors.teal.withValues(alpha: 0.3),
+                                      color: isPaused ? Colors.white.withValues(alpha: 0.1) : Colors.teal.withValues(alpha: 0.3),
                                     ),
                                   ),
                                 Icon(leadIcon, color: iconColor),
                               ],
                             ),
                           ),
-                          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading || isPaused ? Colors.tealAccent : Colors.white)),
+                          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDownloading ? Colors.tealAccent : (isPaused ? Colors.white70 : Colors.white))),
                           subtitle: Text(
                             subText, 
-                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isPaused ? Colors.orangeAccent.withValues(alpha: 0.7) : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey)))
+                            style: TextStyle(color: isDownloading ? Colors.tealAccent.withValues(alpha: 0.7) : (isPaused ? Colors.white54 : (isAlreadyDownloaded ? Colors.greenAccent.withValues(alpha: 0.7) : Colors.grey)))
                           ),
                           trailing: isDownloading
-                              ? IconButton(
-                                  icon: const Icon(Icons.pause, color: Colors.orangeAccent),
-                                  onPressed: () => _pauseDownload(id),
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white30),
+                                      onPressed: () => _cancelDownload(id, rawName),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.pause, color: Colors.white70),
+                                      onPressed: () => _pauseDownload(id),
+                                    ),
+                                  ],
                                 )
                               : isPaused
-                                  ? IconButton(
-                                      icon: const Icon(Icons.play_arrow, color: Colors.tealAccent),
-                                      onPressed: () => _downloadSong(id, rawName),
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.close, color: Colors.white30),
+                                          onPressed: () => _cancelDownload(id, rawName),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.play_arrow, color: Colors.tealAccent),
+                                          onPressed: () => _downloadSong(id, rawName),
+                                        ),
+                                      ],
                                     )
                                   : (isAlreadyDownloaded 
                                       ? const Icon(Icons.check_circle, color: Colors.greenAccent)
