@@ -50,6 +50,8 @@ dependencies:
   receive_sharing_intent: 1.8.0
   wakelock_plus: ^1.7.0
   flutter_system_proxy: ^0.2.1
+  sensors_plus: ^7.1.0
+  environment_sensors: ^0.3.0
 
 dev_dependencies:
   flutter_test:

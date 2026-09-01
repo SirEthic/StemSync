@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:environment_sensors/environment_sensors.dart';
 import 'proxy_client.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -128,6 +129,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
   bool _isLoading = false;
   bool _isGigMode = false;
+  final environmentSensors = EnvironmentSensors();
+  StreamSubscription<double>? _lightSubscription;
+  double _baselineLight = 0.0;
+  DateTime _lastWave = DateTime.now();
   DateTime? _lastBackPressTime;
   
   List<TrackData> _tracks = [];
