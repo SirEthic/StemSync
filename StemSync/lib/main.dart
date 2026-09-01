@@ -593,7 +593,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       if (!_isGigMode) return;
       double magnitude = event.x.abs() + event.y.abs() + event.z.abs();
       // 3.0 on userAccelerometer means a solid physical knock to the phone
-      if (magnitude > 12.6 && DateTime.now().difference(_lastKnock).inMilliseconds > 1000) {
+      if (magnitude > 14.0 && DateTime.now().difference(_lastKnock).inMilliseconds > 1000) {
         _togglePlayPause();
         _lastKnock = DateTime.now();
       }
