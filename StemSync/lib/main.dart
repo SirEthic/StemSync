@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:proximity_sensor/proximity_sensor.dart';
 import 'proxy_client.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -129,8 +128,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
   bool _isLoading = false;
   bool _isGigMode = false;
-  StreamSubscription<dynamic>? _proximitySubscription;
-  bool _wasNear = false;
   DateTime? _lastBackPressTime;
   
   List<TrackData> _tracks = [];
@@ -3100,9 +3097,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               pulse = max(0.0, 1.0 - (beatFraction * 2.5)); // Slower, smoother fade
             }
             
-            return Container(
-              color: Colors.tealAccent.withValues(alpha: pulse * 0.2),
-              child: child,
+            return GestureDetector(
+              onDoubleTap: _togglePlayPause,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                color: Colors.tealAccent.withValues(alpha: pulse * 0.2),
+                child: child,
+              ),
             );
           },
           child: Stack(
