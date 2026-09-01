@@ -1,53 +1,47 @@
-# StemSync
+# 🚀 StemSync v2.0
 
 ![StemSync Logo](StemSync/assets/icon_foreground.png)
 
-**StemSync** is a powerful mobile application designed for musicians, producers, and singers. It allows you to take your AI-separated instrument stems and dynamically mix, pitch-shift, and tempo-shift them in real-time directly on your Android device.
+**StemSync** is a revolutionary two-part AI ecosystem designed for musicians, producers, and singers. It replaces complex audio engineering workflows with a fully automated **Zero-Bleed Windows Packager Engine** that generates studio-grade `.bandtrack` files, and a beautiful **Flutter Mobile App** to mix, pitch-shift, and tempo-shift them in real-time.
 
-## 🌟 Key Features
+---
 
-*   **🎸 6-Part Stem Mixing:** StemSync is built to perfectly support **Ultimate Vocal Remover 5 (UVR5)** separation models. It dynamically handles 6 distinct parts: Vocals, Drums, Bass, Guitar, Piano, and Other.
-*   **🎛️ Real-Time Studio Mixer:** A fully interactive studio mixer built right into your phone. Features dynamic volume control, magnetic center-snapping stereo panning (L/R), and dedicated Mute & Solo buttons for every stem.
-*   **⏱️ Pitch & Tempo Manipulation:** Instantly shift the key of the song without affecting the tempo, or speed up/slow down the tempo without altering the pitch. Perfect for practice and rehearsal.
-*   **🎼 Dynamic Ribbon UI:** Beautiful, scrolling visual ribbons for Lyrics, Chords, and Song Sections that track automatically with the playback timestamp.
-*   **📋 Setlists:** Create custom setlists to organize your practice sessions and gigs, and seamlessly auto-advance through them.
-*   **📄 PDF Chord Sheet Export:** Instantly generate clean, vector-based A4 rhythm slash notation PDF chord sheets directly from the app.
-*   **🎧 Audio Mixdown & Sharing:** Export your custom stem mix as a single WAV file to share with bandmates or use in other software.
-*   **🔁 Advanced Playback Controls:** Includes a customizable Count-In (1-4 bars) and looping controls (Repeat Song or Auto-Advance).
-*   **🥁 Integrated Metronome:** A built-in customizable metronome with subdivision support that synchronizes perfectly with the track's BPM.
-*   **💽 Rich Song Metadata:** Displays full track details including Album Art, Genre, Release Year, original key, and precise BPM.
-*   **💾 Persistent Mixes:** Your custom volume, pan, and mute states are saved automatically per song. When you load the track again, your mix is exactly how you left it.
+## 🎸 The Windows Packager Engine (New in v2.0!)
 
-*   **☁️ Cloud Band Drive:** Native Google Drive integration. Directly browse, stream, and download your band's shared ZIP stems and setlists right from the cloud tab without manual file transfers.
-*   **🤝 Collaborative Setlists:** Effortlessly sync JSON setlists across devices via the cloud. See which songs you're missing as grayed-out "ghost items" and download them directly from the setlist view with a single tap.
-*   **🛡️ Enterprise Proxy Support:** Full system proxy support for strict school and corporate Wi-Fi environments.
+Say goodbye to manual UVR5 stem routing. The brand new StemSync Packager is a fully automated, offline Python AI engine that turns any raw `.mp3` into a fully interactive bandtrack in under 30 seconds.
+
+*   **Zero-Bleed Separation (ONNX & MDX-Net):** Deploys an aggressive *Spectral Energy-Proportional Allocation* algorithm that isolates Drums via MDX-Net, and then dynamically filters out all transient bleed from the HTDemucs 6-stem residual mix for unprecedented clarity.
+*   **Automatic Metadata Ripping:** Seamlessly integrates with the **Shazam API** to acoustically fingerprint your audio and automatically embed the original Album Art, Song Title, and Artist.
+*   **Tempo-Mapped Metronomes:** Uses Librosa to dynamically calculate exact BPM and transient beats, mathematically generating perfectly synced click-tracks (`1x`, `0.5x`, and `2x` subdivisions).
+*   **Automatic Synced Lyrics:** Automatically searches the global `.lrc` database and bundles time-synced lyrics into your track.
+
+## 📱 The Mobile Player App
+
+Drop your generated `.bandtrack` zip file directly into the StemSync Android app for a fully interactive studio experience.
+
+*   **6-Part Real-Time Studio Mixer:** Fully interactive volume control, magnetic center-snapping stereo panning (L/R), and dedicated Mute & Solo buttons for Vocals, Drums, Bass, Guitar, Keys, and Other.
+*   **Pitch & Tempo Manipulation:** Instantly shift the key of the song without affecting the tempo, or speed up/slow down the tempo without altering the pitch. Perfect for practice and rehearsal.
+*   **Dynamic UI Ribbons:** Beautiful, scrolling visual ribbons for Lyrics, Chords, and Song Sections that track perfectly in time with the music.
+*   **Scrubber UI & A/B Looping:** Seamlessly scrub through all 6 stems simultaneously without losing sync, or set A/B loop points to infinitely practice specific guitar solos.
+*   **Cloud Band Drive & Setlists:** Sync JSON setlists and stream `.bandtrack` ZIP files directly from your band's shared Google Drive without manual file transfers.
+*   **PDF Chord Sheet Export:** Instantly generate clean, vector-based A4 rhythm slash notation PDF chord sheets directly from the app.
+
+---
 
 ## 📥 Installation & Usage
 
-StemSync operates in a two-part workflow. The heavy AI separation is done on your PC using tools like UVR5, and the resulting stems are packaged and sent to your phone for mixing.
+StemSync operates in a blazing fast two-part workflow:
 
-### 1. Prerequisites (UVR5)
-Before using StemSync, you must separate your track. Use [Ultimate Vocal Remover 5 (UVR5)](https://ultimatevocalremover.com/) (or a similar tool) to separate your audio file into 6 distinct stems: **Vocals, Drums, Bass, Guitar, Piano, and Other**. Place these output `.wav`, `.mp3`, or `.flac` files into a single folder.
+### 1. Generate the Bandtrack (Windows PC)
+1. Download either the `GPU` (NVIDIA) or `CPU` version of the **StemSync Packager** from the [Releases](https://github.com/SirEthic/StemSync/releases/tag/v2.0) page.
+2. Select your raw `.mp3` song.
+3. Click "Process". The engine will automatically separate the 6 stems, rip the Shazam metadata, fetch the `.lrc` lyrics, generate the metronomes, and output a clean `.zip` file.
 
-### 2. The Windows Packager (PC)
-1. Navigate to the [Releases](https://github.com/SirEthic/StemSync/releases) page and download `StemSync_Packager_Setup.exe`.
-2. Install the program.
-3. Open the Packager and select the folder containing your separated stems. 
-4. The packager will automatically analyze the audio, fetch synchronized lyrics and chords, fingerprint the song via Shazam for metadata, and compile everything into a single `.zip` StemSync project file.
+### 2. Play the Bandtrack (Android Phone)
+1. Download the **StemSync Android APK** (`arm64-v8a` recommended) from the Releases page.
+2. Transfer the generated `.zip` file to your phone.
+3. Tap "Import Song" inside the app, select the `.zip`, and instantly start mixing!
 
-### 3. The StemSync App (Android)
-1. Download the latest `StemSync-v1.4.0-arm64-v8a.apk` (or your device's architecture) from the [Releases](https://github.com/SirEthic/StemSync/releases) page and install it on your Android phone.
-2. Upload the compiled `.zip` project file(s) from the Packager to your shared Google Drive folder.
-3. Open StemSync, navigate to the **Cloud Tab**, enter your band's shared Google Drive Folder ID, and tap to seamlessly download your songs.
-4. Start mixing and creating collaborative setlists!
+---
 
-## 🛠️ Built With
-
-*   **Flutter & Dart** - Mobile Application UI (optimized with a pure OLED black theme)
-*   **SoLoud** - High-performance C++ audio engine for low-latency, multi-track playback
-*   **Python** - Packager backend for audio analysis and compiling
-*   **Shazamio** - Audio fingerprinting and metadata retrieval
-
-## 📄 License
-
-This project is open-source and available under standard licenses.
+*StemSync is proudly open-source and built for live musicians.*
