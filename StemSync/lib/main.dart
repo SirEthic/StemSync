@@ -3109,22 +3109,44 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     }
                   ),
                   const SizedBox(height: 40),
-                  IconButton(
-                    iconSize: 80,
-                    icon: Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: Colors.tealAccent),
-                    onPressed: () {
-                      if (_tracks.isNotEmpty) {
-                        setState(() {
-                          bool newPauseState = !isPlaying;
-                          for (var track in _tracks) {
-                            SoLoud.instance.setPause(track.handle, newPauseState);
+                  GestureDetector(
+                    onTap: _togglePlayPause,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(color: (_countInTimer?.isActive ?? false) ? Colors.tealAccent : Colors.white12, shape: BoxShape.circle),
+                      child: Center(
+                        child: (_countInTimer?.isActive ?? false) 
+                          ? Text("${_countInClicks - _currentCountInTick}", style: const TextStyle(color: Colors.black, fontSize: 36, fontWeight: FontWeight.bold))
+                          : Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.tealAccent,
+                              size: 50,
+                            ),
+                      ),
+                    ),
+                  ),
+                  Builder(
+                    builder: (ctx) {
+                      String nextText = "";
+                      if (_activePlaylist != null && _loadedSongDir != null) {
+                        final pList = _playlists[_activePlaylist!];
+                        if (pList != null) {
+                          String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
+                          int idx = pList.indexOf(currentDirName);
+                          if (idx != -1 && idx + 1 < pList.length) {
+                            nextText = "Up Next: ${pList[idx + 1]}";
+                          } else if (idx != -1) {
+                            nextText = "Up Next: End of Setlist";
                           }
-                          for (var track in _metronomeTracks.values) {
-                            SoLoud.instance.setPause(track.handle, newPauseState);
-                          }
-                        });
+                        }
                       }
-                    },
+                      if (nextText.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Text(nextText, style: const TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
+                      );
+                    }
                   ),
                 ],
               ),
