@@ -127,6 +127,7 @@ class MixerScreen extends StatefulWidget {
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
   bool _isLoading = false;
+  bool _isGigMode = false;
   DateTime? _lastBackPressTime;
   
   List<TrackData> _tracks = [];
@@ -729,6 +730,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 child: Text("Options", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
               ),
               if (_loadedSongDir != null) ...[
+
+                  ListTile(
+                    contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                    leading: const Icon(Icons.stay_current_landscape, color: Colors.tealAccent),
+                    title: const Text('Enter Gig Mode', style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _toggleGigMode();
+                    },
+                  ),
+
                 ListTile(
                   contentPadding: const EdgeInsets.only(left: 32, right: 24),
                   leading: const Icon(Icons.info_outline, color: Colors.white),
@@ -2565,6 +2577,22 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     );
   }
 
+  
+  void _toggleGigMode() {
+    setState(() {
+      _isGigMode = !_isGigMode;
+    });
+    if (_isGigMode) {
+      WakelockPlus.enable();
+      SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      WakelockPlus.disable();
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+  }
+
   Widget _buildContent(BuildContext context) {
     bool isPlaying = _tracks.isNotEmpty && !SoLoud.instance.getPause(_tracks.first.handle);
     String songName = _songMetadata?['song_name'] ?? 'Select a Song';
@@ -3050,6 +3078,72 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         body: Center(child: CircularProgressIndicator(color: Colors.tealAccent)),
       );
     }
+    if (_isGigMode) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ValueListenableBuilder<int>(
+                    valueListenable: _activeSectionNotifier,
+                    builder: (context, activeIdx, child) {
+                      String sectionText = "";
+                      if (activeIdx >= 0 && activeIdx < _sections.length) {
+                        sectionText = _sections[activeIdx]['name'];
+                      }
+                      return Text(sectionText, style: const TextStyle(color: Colors.tealAccent, fontSize: 32, fontWeight: FontWeight.bold));
+                    }
+                  ),
+                  const SizedBox(height: 20),
+                  ValueListenableBuilder<int>(
+                    valueListenable: _activeChordNotifier,
+                    builder: (context, activeIdx, child) {
+                      String chordText = "-";
+                      if (activeIdx >= 0 && activeIdx < _chords.length) {
+                        chordText = _transposeKey(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
+                      }
+                      return Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 120, fontWeight: FontWeight.bold));
+                    }
+                  ),
+                  const SizedBox(height: 40),
+                  IconButton(
+                    iconSize: 80,
+                    icon: Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: Colors.tealAccent),
+                    onPressed: () {
+                      if (_tracks.isNotEmpty) {
+                        setState(() {
+                          bool newPauseState = !isPlaying;
+                          for (var track in _tracks) {
+                            SoLoud.instance.setPause(track.handle, newPauseState);
+                          }
+                          for (var track in _metronomeTracks.values) {
+                            SoLoud.instance.setPause(track.handle, newPauseState);
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 20,
+              right: 20,
+              child: IconButton(
+                iconSize: 40,
+                icon: const Icon(Icons.close, color: Colors.white54),
+                onPressed: _toggleGigMode,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+
 
     return Scaffold(
         appBar: AppBar(
