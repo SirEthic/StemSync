@@ -589,7 +589,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     
-    _accelSubscription = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
+    _accelSubscription = userAccelerometerEventStream(samplingPeriod: SensorInterval.fastestInterval).listen((UserAccelerometerEvent event) {
       if (!_isGigMode) return;
       double magnitude = event.x.abs() + event.y.abs() + event.z.abs();
       // 3.0 on userAccelerometer means a solid physical knock to the phone
