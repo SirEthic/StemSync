@@ -1226,6 +1226,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   void _seekBy(double seconds) {
     if (_tracks.isEmpty) return;
+    HapticFeedback.lightImpact();
     double current = _currentPositionNotifier.value;
     double newPos = current + seconds;
     if (newPos < 0) newPos = 0;
@@ -3454,9 +3455,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 onPressed: _showMetronomeMenu,
               ),
               
-              IconButton(
-                icon: const Icon(Icons.replay_10, color: Colors.white, size: 36),
-                onPressed: () => _seekBy(-10),
+              Container(
+                decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+                child: IconButton(
+                  icon: const Icon(Icons.replay_10, color: Colors.white, size: 28),
+                  onPressed: () => _seekBy(-10),
+                ),
               ),
               
               GestureDetector(
@@ -3477,9 +3481,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 ),
               ),
               
-              IconButton(
-                icon: const Icon(Icons.forward_10, color: Colors.white, size: 36),
-                onPressed: () => _seekBy(10),
+              Container(
+                decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+                child: IconButton(
+                  icon: const Icon(Icons.forward_10, color: Colors.white, size: 28),
+                  onPressed: () => _seekBy(10),
+                ),
               ),
               
               IconButton(
