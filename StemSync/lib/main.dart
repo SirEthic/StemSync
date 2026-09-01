@@ -3099,7 +3099,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             
             return Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.tealAccent.withValues(alpha: pulse * 0.4), width: pulse * 6),
+                border: Border.all(color: Colors.tealAccent.withValues(alpha: pulse * 0.4), width: 6),
               ),
               child: child,
             );
@@ -3120,7 +3120,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         return Text(sectionText, style: const TextStyle(color: Colors.tealAccent, fontSize: 24, fontWeight: FontWeight.bold));
                       }
                     ),
-                    const SizedBox(height: 12),
                     ValueListenableBuilder<int>(
                       valueListenable: _activeChordNotifier,
                       builder: (context, activeIdx, child) {
@@ -3132,24 +3131,16 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             nextChordText = _transposeChord(_chords[activeIdx + 1]['chord'], _pitchShiftSemitones.toInt());
                           }
                         }
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
+                        return Column(
                           children: [
-                            if (nextChordText.isNotEmpty) const SizedBox(width: 60), // Balance the row
-                            Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold)),
+                            Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold, height: 1.1)),
                             if (nextChordText.isNotEmpty)
-                              Container(
-                                width: 60,
-                                padding: const EdgeInsets.only(left: 20),
-                                child: Text(nextChordText, style: const TextStyle(color: Colors.white30, fontSize: 40, fontWeight: FontWeight.bold)),
-                              )
+                              Text("Next: $nextChordText", style: const TextStyle(color: Colors.white30, fontSize: 24, fontWeight: FontWeight.bold)),
                           ],
                         );
                       }
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: _togglePlayPause,
                       child: Container(
@@ -3171,9 +3162,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 ),
               ),
               Positioned(
-                bottom: 20,
-                left: 0,
-                right: 0,
+                top: 24,
+                left: 24,
                 child: Builder(
                   builder: (ctx) {
                     String nextText = "";
@@ -3183,16 +3173,18 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
                         int idx = pList.indexOf(currentDirName);
                         if (idx != -1 && idx + 1 < pList.length) {
-                          nextText = "Up Next: ${pList[idx + 1]}";
+                          nextText = "Up Next:
+${pList[idx + 1]}";
                         } else if (idx != -1) {
-                          nextText = "Up Next: End of Setlist";
+                          nextText = "Up Next:
+End of Setlist";
                         }
                       }
                     }
                     if (nextText.isEmpty) return const SizedBox.shrink();
                     return Text(
                       nextText, 
-                      textAlign: TextAlign.center, 
+                      textAlign: TextAlign.left, 
                       style: const TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)
                     );
                   }
