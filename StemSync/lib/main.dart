@@ -1215,17 +1215,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _currentCountInTick = 0;
         setState(() {});
 
-        // 1. Reset C++ audio clock and schedule all beeps with perfect sample-accuracy!
-        SoLoud.instance.resetStreamTime();
-        Duration physicsTime = Duration.zero;
+        // 1. Schedule all beeps with perfect sample-accuracy!
+        final now = SoLoud.instance.getEngineTime();
+        Duration offsetTime = Duration.zero;
         int intervalUs = (interval * 1000000).toInt();
         _countInHandles.clear();
         for (int i = 0; i < _countInClicks; i++) {
            if (_beepSource != null) {
-              final h = SoLoud.instance.playClocked(_beepSource!, physicsTime, volume: _getAmplitudeFromSlider(_metronomeVolume));
+              final h = SoLoud.instance.playScheduled(_beepSource!, now + offsetTime, volume: _getAmplitudeFromSlider(_metronomeVolume));
               _countInHandles.add(h);
            }
-           physicsTime += Duration(microseconds: intervalUs);
+           offsetTime += Duration(microseconds: intervalUs);
         }
 
         // 2. Start the stopwatch so the UI can loosely track visual updates
