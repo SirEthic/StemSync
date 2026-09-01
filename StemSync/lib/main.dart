@@ -588,6 +588,17 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    _accelSubscription = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
+      if (!_isGigMode) return;
+      double magnitude = event.x.abs() + event.y.abs() + event.z.abs();
+      // 3.0 on userAccelerometer means a solid physical knock to the phone
+      if (magnitude > 3.0 && DateTime.now().difference(_lastKnock).inMilliseconds > 1000) {
+        _togglePlayPause();
+        _lastKnock = DateTime.now();
+      }
+    });
+
     _initializeApp();
     _setupSharingIntent();
     
@@ -2476,6 +2487,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _accelSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _intentDataStreamSubscription?.cancel();
     _ticker.dispose();
