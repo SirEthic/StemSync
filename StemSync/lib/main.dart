@@ -564,6 +564,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   List<SoundHandle> _countInHandles = [];
   AudioSource? _beepSource;
   bool _isSongLooping = true;
+  bool _autoAdvance = false;
   bool _simplifyChords = false;
   
   // Bouncing State
@@ -618,10 +619,19 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                  if (!_isSongLooping) {
                      for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
                      for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
+                     
+                     for (var t in _tracks) SoLoud.instance.seek(t.handle, Duration.zero);
+                     for (var t in _metronomeTracks.values) SoLoud.instance.seek(t.handle, Duration.zero);
+                     _currentPositionNotifier.value = 0.0;
                      _updateActiveChord(0.0);
                      _updateActiveSection(0.0);
+                     _updateActiveLyric(0.0);
+                     
                      setState(() {});
-                     _playNextSong(autoPlay: true);
+                     
+                     if (_autoAdvance) {
+                         _playNextSong(autoPlay: true);
+                     }
                  }
              }
          } else {
@@ -731,8 +741,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     children: [
                       ListTile(
                         contentPadding: const EdgeInsets.only(left: 32, right: 24),
-                        leading: Icon(_isSongLooping ? Icons.repeat_one : Icons.repeat, color: Colors.white),
-                        title: Text(_isSongLooping ? 'Looping Song' : 'Auto-Advance to Next', style: const TextStyle(color: Colors.white)),
+                        leading: const Icon(Icons.repeat_one, color: Colors.white),
+                        title: const Text('Loop Song', style: TextStyle(color: Colors.white)),
                         trailing: Switch(
                           value: _isSongLooping,
                           activeColor: Colors.tealAccent,
@@ -745,6 +755,24 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                           bool val = !_isSongLooping;
                           setModalState(() { _isSongLooping = val; });
                           setState(() { _isSongLooping = val; });
+                        },
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                        leading: const Icon(Icons.skip_next, color: Colors.white),
+                        title: const Text('Auto-Advance to Next', style: TextStyle(color: Colors.white)),
+                        trailing: Switch(
+                          value: _autoAdvance,
+                          activeColor: Colors.tealAccent,
+                          onChanged: (val) {
+                            setModalState(() { _autoAdvance = val; });
+                            setState(() { _autoAdvance = val; });
+                          },
+                        ),
+                        onTap: () {
+                          bool val = !_autoAdvance;
+                          setModalState(() { _autoAdvance = val; });
+                          setState(() { _autoAdvance = val; });
                         },
                       ),
                       ListTile(
@@ -1837,6 +1865,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           if (data['isMetronomeOn'] != null) _isMetronomeOn = data['isMetronomeOn'] as bool;
           if (data['countInClicks'] != null) _countInClicks = data['countInClicks'] as int;
           if (data['isSongLooping'] != null) _isSongLooping = data['isSongLooping'] as bool;
+          if (data['autoAdvance'] != null) _autoAdvance = data['autoAdvance'] as bool;
         } catch (_) {}
       }
 
@@ -2450,6 +2479,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       'isMetronomeOn': _isMetronomeOn,
       'countInClicks': _countInClicks,
       'isSongLooping': _isSongLooping,
+      'autoAdvance': _autoAdvance,
       'volumes': <String, double>{},
       'pans': <String, double>{},
       'mutes': <String, bool>{},
