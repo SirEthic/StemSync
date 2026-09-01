@@ -27,7 +27,7 @@ tasks.register<Delete>("clean") {
 
 allprojects {
     tasks.withType<JavaCompile> {
-        if (project.name == "receive_sharing_intent" || project.name == "environment_sensors") {
+        if (project.name == "receive_sharing_intent") {
             sourceCompatibility = "1.8"
             targetCompatibility = "1.8"
         } else {
@@ -37,7 +37,7 @@ allprojects {
     }
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {
-            if (project.name == "receive_sharing_intent" || project.name == "environment_sensors") {
+            if (project.name == "receive_sharing_intent") {
                 jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
             } else {
                 jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
