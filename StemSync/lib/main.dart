@@ -3181,26 +3181,45 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               Positioned(
                 top: 24,
                 left: 24,
+                bottom: 80,
+                width: 250,
                 child: Builder(
                   builder: (ctx) {
-                    String nextText = "";
-                    if (_activePlaylist != null && _loadedSongDir != null) {
-                      final pList = _playlists[_activePlaylist!];
-                      if (pList != null) {
-                        String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
-                        int idx = pList.indexOf(currentDirName);
-                        if (idx != -1 && idx + 1 < pList.length) {
-                          nextText = "Up Next:\n${pList[idx + 1]}";
-                        } else if (idx != -1) {
-                          nextText = "Up Next:\nEnd of Setlist";
-                        }
-                      }
-                    }
-                    if (nextText.isEmpty) return const SizedBox.shrink();
-                    return Text(
-                      nextText, 
-                      textAlign: TextAlign.left, 
-                      style: const TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)
+                    if (_activePlaylist == null || _loadedSongDir == null) return const SizedBox.shrink();
+                    final pList = _playlists[_activePlaylist!];
+                    if (pList == null || pList.isEmpty) return const SizedBox.shrink();
+                    
+                    String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
+                    int currentIdx = pList.indexOf(currentDirName);
+                    
+                    double itemHeight = 24.0;
+                    double offset = currentIdx > 2 ? (currentIdx - 2) * itemHeight : 0.0;
+                    
+                    return ListView.builder(
+                      controller: ScrollController(initialScrollOffset: offset),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: pList.length,
+                      itemBuilder: (context, index) {
+                        bool isPast = index < currentIdx;
+                        bool isCurrent = index == currentIdx;
+                        
+                        String songTitle = pList[index].replaceAll(RegExp(r'^\d+_'), '').replaceAll('.mp3', '');
+                        
+                        return SizedBox(
+                          height: itemHeight,
+                          child: Text(
+                            "${index + 1}. $songTitle",
+                            style: TextStyle(
+                              color: isCurrent ? Colors.tealAccent : (isPast ? Colors.white24 : Colors.white70),
+                              fontSize: isCurrent ? 14 : 12,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                              decoration: isPast ? TextDecoration.lineThrough : null,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
                     );
                   }
                 ),
