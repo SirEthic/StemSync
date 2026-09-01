@@ -3126,26 +3126,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         if (activeIdx >= 0 && activeIdx < _chords.length) {
                           chordText = _transposeChord(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
                           
-                          if (_currentTempo > 0) {
-                            double beatInterval = 60.0 / _currentTempo;
-                            double barInterval = beatInterval * 4.0;
-                            double chordTime = (_chords[activeIdx]['time'] as num).toDouble();
-                            
-                            double currentBarStart = _firstBeat + ((chordTime - _firstBeat) / barInterval).floor() * barInterval;
-                            double nextBarStart = currentBarStart + barInterval;
-                            
-                            for (int i = activeIdx + 1; i < _chords.length; i++) {
-                              double futureTime = (_chords[i]['time'] as num).toDouble();
-                              if (futureTime >= nextBarStart - 0.1) {
-                                String candidate = _transposeChord(_chords[i]['chord'], _pitchShiftSemitones.toInt());
-                                if (candidate != chordText) {
-                                  nextChordText = candidate;
-                                }
-                                break;
-                              }
+                          for (int i = activeIdx + 1; i < _chords.length; i++) {
+                            String candidate = _transposeChord(_chords[i]['chord'], _pitchShiftSemitones.toInt());
+                            if (candidate != chordText) {
+                              nextChordText = candidate;
+                              break;
                             }
-                          } else if (activeIdx + 1 < _chords.length) {
-                            nextChordText = _transposeChord(_chords[activeIdx + 1]['chord'], _pitchShiftSemitones.toInt());
                           }
                         }
                         return Column(
