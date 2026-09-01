@@ -2545,6 +2545,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         
+        if (_isGigMode) {
+          _toggleGigMode();
+          return;
+        }
+        
         if (_activeSongDir != null) {
           _closeMixer();
           return;
