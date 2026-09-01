@@ -616,7 +616,21 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
              
              // Detect native wrap-around (song finished and looped back to start natively)
              if (diff < -5.0 && current > _songLength / 2) {
-                 if (!_isSongLooping) {
+                 if (_isSongLooping) {
+                     if (_countInClicks > 0) {
+                         for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
+                         for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
+                         
+                         for (var t in _tracks) SoLoud.instance.seek(t.handle, Duration.zero);
+                         for (var t in _metronomeTracks.values) SoLoud.instance.seek(t.handle, Duration.zero);
+                         _currentPositionNotifier.value = 0.0;
+                         _updateActiveChord(0.0);
+                         _updateActiveSection(0.0);
+                         _updateActiveLyric(0.0);
+                         
+                         _togglePlayPause(); // Triggers the count in!
+                     }
+                 } else {
                      for (var t in _tracks) SoLoud.instance.setPause(t.handle, true);
                      for (var t in _metronomeTracks.values) SoLoud.instance.setPause(t.handle, true);
                      

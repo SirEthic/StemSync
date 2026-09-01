@@ -50,7 +50,8 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
       _folderId = prefs.getString('drive_folder_id') ?? '';
     });
     if (_folderId.isNotEmpty) {
-      fetchCloudSongs();
+      // Intentionally do not auto-fetch to prevent excessive API calls.
+      // User must manually pull-to-refresh.
     }
   }
 
