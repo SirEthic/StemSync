@@ -3103,7 +3103,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     builder: (context, activeIdx, child) {
                       String chordText = "-";
                       if (activeIdx >= 0 && activeIdx < _chords.length) {
-                        chordText = _transposeKey(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
+                        chordText = _transposeChord(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
                       }
                       return Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold));
                     }
