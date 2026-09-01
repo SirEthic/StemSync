@@ -3173,11 +3173,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
                         int idx = pList.indexOf(currentDirName);
                         if (idx != -1 && idx + 1 < pList.length) {
-                          nextText = "Up Next:
-${pList[idx + 1]}";
+                          nextText = "Up Next:\\n${pList[idx + 1]}";
                         } else if (idx != -1) {
-                          nextText = "Up Next:
-End of Setlist";
+                          nextText = "Up Next:\\nEnd of Setlist";
                         }
                       }
                     }
