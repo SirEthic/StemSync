@@ -3086,93 +3086,146 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     if (_isGigMode) {
       return Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ValueListenableBuilder<int>(
-                    valueListenable: _activeSectionNotifier,
-                    builder: (context, activeIdx, child) {
-                      String sectionText = "";
-                      if (activeIdx >= 0 && activeIdx < _sections.length) {
-                        sectionText = _sections[activeIdx]['name'];
+        body: ValueListenableBuilder<double>(
+          valueListenable: _currentPositionNotifier,
+          builder: (context, pos, child) {
+            double pulse = 0.0;
+            if (isPlaying && pos > _firstBeat && _currentTempo > 0) {
+              double interval = 60.0 / _currentTempo;
+              double beats = (pos - _firstBeat) / interval;
+              double beatFraction = beats - beats.floor();
+              pulse = max(0.0, 1.0 - (beatFraction * 5));
+            }
+            
+            return Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.tealAccent.withValues(alpha: pulse * 0.4), width: pulse * 6),
+              ),
+              child: child,
+            );
+          },
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ValueListenableBuilder<int>(
+                      valueListenable: _activeSectionNotifier,
+                      builder: (context, activeIdx, child) {
+                        String sectionText = "";
+                        if (activeIdx >= 0 && activeIdx < _sections.length) {
+                          sectionText = _sections[activeIdx]['name'];
+                        }
+                        return Text(sectionText, style: const TextStyle(color: Colors.tealAccent, fontSize: 24, fontWeight: FontWeight.bold));
                       }
-                      return Text(sectionText, style: const TextStyle(color: Colors.tealAccent, fontSize: 24, fontWeight: FontWeight.bold));
-                    }
-                  ),
-                  const SizedBox(height: 12),
-                  ValueListenableBuilder<int>(
-                    valueListenable: _activeChordNotifier,
-                    builder: (context, activeIdx, child) {
-                      String chordText = "-";
-                      if (activeIdx >= 0 && activeIdx < _chords.length) {
-                        chordText = _transposeChord(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
+                    ),
+                    const SizedBox(height: 12),
+                    ValueListenableBuilder<int>(
+                      valueListenable: _activeChordNotifier,
+                      builder: (context, activeIdx, child) {
+                        String chordText = "-";
+                        String nextChordText = "";
+                        if (activeIdx >= 0 && activeIdx < _chords.length) {
+                          chordText = _transposeChord(_chords[activeIdx]['chord'], _pitchShiftSemitones.toInt());
+                          if (activeIdx + 1 < _chords.length) {
+                            nextChordText = _transposeChord(_chords[activeIdx + 1]['chord'], _pitchShiftSemitones.toInt());
+                          }
+                        }
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            if (nextChordText.isNotEmpty) const SizedBox(width: 60), // Balance the row
+                            Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold)),
+                            if (nextChordText.isNotEmpty)
+                              Container(
+                                width: 60,
+                                padding: const EdgeInsets.only(left: 20),
+                                child: Text(nextChordText, style: const TextStyle(color: Colors.white30, fontSize: 40, fontWeight: FontWeight.bold)),
+                              )
+                          ],
+                        );
                       }
-                      return Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold));
-                    }
-                  ),
-                  const SizedBox(height: 24),
-                  GestureDetector(
-                    onTap: _togglePlayPause,
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(color: (_countInTimer?.isActive ?? false) ? Colors.tealAccent : Colors.white12, shape: BoxShape.circle),
-                      child: Center(
-                        child: (_countInTimer?.isActive ?? false) 
-                          ? Text("${_countInClicks - _currentCountInTick}", style: const TextStyle(color: Colors.black, fontSize: 32, fontWeight: FontWeight.bold))
-                          : Icon(
-                              isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.tealAccent,
-                              size: 40,
-                            ),
+                    ),
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _togglePlayPause,
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(color: (_countInTimer?.isActive ?? false) ? Colors.tealAccent : Colors.white12, shape: BoxShape.circle),
+                        child: Center(
+                          child: (_countInTimer?.isActive ?? false) 
+                            ? Text("${_countInClicks - _currentCountInTick}", style: const TextStyle(color: Colors.black, fontSize: 32, fontWeight: FontWeight.bold))
+                            : Icon(
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: Colors.tealAccent,
+                                size: 40,
+                              ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
-              child: Builder(
-                builder: (ctx) {
-                  String nextText = "";
-                  if (_activePlaylist != null && _loadedSongDir != null) {
-                    final pList = _playlists[_activePlaylist!];
-                    if (pList != null) {
-                      String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
-                      int idx = pList.indexOf(currentDirName);
-                      if (idx != -1 && idx + 1 < pList.length) {
-                        nextText = "Up Next: ${pList[idx + 1]}";
-                      } else if (idx != -1) {
-                        nextText = "Up Next: End of Setlist";
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: Builder(
+                  builder: (ctx) {
+                    String nextText = "";
+                    if (_activePlaylist != null && _loadedSongDir != null) {
+                      final pList = _playlists[_activePlaylist!];
+                      if (pList != null) {
+                        String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
+                        int idx = pList.indexOf(currentDirName);
+                        if (idx != -1 && idx + 1 < pList.length) {
+                          nextText = "Up Next: ${pList[idx + 1]}";
+                        } else if (idx != -1) {
+                          nextText = "Up Next: End of Setlist";
+                        }
                       }
                     }
+                    if (nextText.isEmpty) return const SizedBox.shrink();
+                    return Text(
+                      nextText, 
+                      textAlign: TextAlign.center, 
+                      style: const TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)
+                    );
                   }
-                  if (nextText.isEmpty) return const SizedBox.shrink();
-                  return Text(
-                    nextText, 
-                    textAlign: TextAlign.center, 
-                    style: const TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)
-                  );
-                }
+                ),
               ),
-            ),
-            Positioned(
-              top: 20,
-              right: 20,
-              child: IconButton(
-                iconSize: 40,
-                icon: const Icon(Icons.close, color: Colors.white54),
-                onPressed: _toggleGigMode,
+              Positioned(
+                top: 20,
+                right: 20,
+                child: IconButton(
+                  iconSize: 40,
+                  icon: const Icon(Icons.close, color: Colors.white54),
+                  onPressed: _toggleGigMode,
+                ),
               ),
-            ),
-          ],
-        ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _currentPositionNotifier,
+                  builder: (context, pos, child) {
+                    return LinearProgressIndicator(
+                      value: _songLength > 0 ? pos / _songLength : 0,
+                      backgroundColor: Colors.transparent,
+                      valueColor: const AlwaysStoppedAnimation(Colors.tealAccent),
+                      minHeight: 2,
+                    );
+                  }
+                )
+              )
+            ],
+          ),
+        )
       );
     }
 
