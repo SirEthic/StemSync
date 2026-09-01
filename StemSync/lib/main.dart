@@ -3094,11 +3094,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               double interval = 60.0 / _currentTempo;
               double beats = (pos - _firstBeat) / interval;
               double beatFraction = beats - beats.floor();
-              pulse = max(0.0, 1.0 - (beatFraction * 5));
+              pulse = max(0.0, 1.0 - (beatFraction * 2.5)); // Slower, smoother fade
             }
             
             return Container(
-              color: Colors.tealAccent.withValues(alpha: pulse * 0.08),
+              color: Colors.tealAccent.withValues(alpha: pulse * 0.2),
               child: child,
             );
           },
