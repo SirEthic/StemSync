@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:proximity_sensor/proximity_sensor.dart';
 import 'proxy_client.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -128,6 +129,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
   bool _isLoading = false;
   bool _isGigMode = false;
+  StreamSubscription<dynamic>? _proximitySubscription;
+  bool _wasNear = false;
   DateTime? _lastBackPressTime;
   
   List<TrackData> _tracks = [];
