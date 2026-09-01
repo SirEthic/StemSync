@@ -662,8 +662,24 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     
     for (int i = 0; i < numSamples; i++) {
       double t = i / sampleRate;
+      
+      // Smooth attack for the first 2ms to prevent starting pops
+      double attack = 1.0;
+      if (t < 0.002) {
+          attack = t / 0.002;
+      }
+      
+      // Exponential decay
       double env = exp(-t * 80.0);
-      double sample = sin(2 * pi * 1000.0 * t) * env;
+      
+      // Smooth release for the last 5ms to prevent ending clicks
+      double release = 1.0;
+      double remaining = (durationMs / 1000.0) - t;
+      if (remaining < 0.005) {
+          release = remaining / 0.005;
+      }
+      
+      double sample = sin(2 * pi * 1000.0 * t) * env * attack * release;
       buffer.setInt16(44 + i * 2, (sample * 32767).toInt(), Endian.little);
     }
     
