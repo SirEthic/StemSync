@@ -3098,9 +3098,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             }
             
             return Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.tealAccent.withValues(alpha: pulse * 0.4), width: 6),
-              ),
+              color: Colors.tealAccent.withValues(alpha: pulse * 0.08),
               child: child,
             );
           },
@@ -3173,9 +3171,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         String currentDirName = _loadedSongDir!.path.split(Platform.pathSeparator).last;
                         int idx = pList.indexOf(currentDirName);
                         if (idx != -1 && idx + 1 < pList.length) {
-                          nextText = "Up Next:\\n${pList[idx + 1]}";
+                          nextText = "Up Next:\n${pList[idx + 1]}";
                         } else if (idx != -1) {
-                          nextText = "Up Next:\\nEnd of Setlist";
+                          nextText = "Up Next:\nEnd of Setlist";
                         }
                       }
                     }
@@ -3198,17 +3196,20 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                 ),
               ),
               Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
+                bottom: 32,
+                left: 60,
+                right: 60,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _currentPositionNotifier,
                   builder: (context, pos, child) {
-                    return LinearProgressIndicator(
-                      value: _songLength > 0 ? pos / _songLength : 0,
-                      backgroundColor: Colors.transparent,
-                      valueColor: const AlwaysStoppedAnimation(Colors.tealAccent),
-                      minHeight: 2,
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _songLength > 0 ? pos / _songLength : 0,
+                        backgroundColor: Colors.white10,
+                        valueColor: const AlwaysStoppedAnimation(Colors.tealAccent),
+                        minHeight: 4,
+                      ),
                     );
                   }
                 )
