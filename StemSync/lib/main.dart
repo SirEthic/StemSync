@@ -1182,6 +1182,31 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _countInHandles.clear();
   }
 
+  void _seekBy(double seconds) {
+    if (_tracks.isEmpty) return;
+    double current = _currentPositionNotifier.value;
+    double newPos = current + seconds;
+    if (newPos < 0) newPos = 0;
+    if (newPos > _songLength) newPos = _songLength;
+    
+    _cancelCountIn();
+    
+    for (var t in _tracks) {
+      SoLoud.instance.seek(t.handle, Duration(milliseconds: (newPos * 1000).toInt()));
+    }
+    for (var t in _metronomeTracks.values) {
+      SoLoud.instance.seek(t.handle, Duration(milliseconds: (newPos * 1000).toInt()));
+    }
+    
+    _currentPositionNotifier.value = newPos;
+    _updateActiveChord(newPos);
+    _updateActiveSection(newPos);
+    
+    if (_showChords && _chordScrollController.hasClients) {
+        _chordScrollController.jumpTo(newPos * 160.0);
+    }
+    setState((){});
+  }
   void _togglePlayPause() {
     if (_tracks.isEmpty) return;
 
@@ -3386,8 +3411,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               
               IconButton(
-                icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
-                onPressed: _playPrevSong,
+                icon: const Icon(Icons.replay_10, color: Colors.white, size: 36),
+                onPressed: () => _seekBy(-10),
               ),
               
               GestureDetector(
@@ -3409,8 +3434,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
               ),
               
               IconButton(
-                icon: const Icon(Icons.skip_next, color: Colors.white, size: 36),
-                onPressed: _playNextSong,
+                icon: const Icon(Icons.forward_10, color: Colors.white, size: 36),
+                onPressed: () => _seekBy(10),
               ),
               
               IconButton(
