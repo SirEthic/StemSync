@@ -564,7 +564,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   int _currentCountInTick = 0;
   List<SoundHandle> _countInHandles = [];
   AudioSource? _beepSource;
-  bool _isSongLooping = true;
+  bool _isSongLooping = false;
   bool _autoAdvance = false;
   bool _simplifyChords = false;
   
