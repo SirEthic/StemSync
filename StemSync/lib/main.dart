@@ -3115,7 +3115,14 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                         if (activeIdx >= 0 && activeIdx < _sections.length) {
                           sectionText = _sections[activeIdx]['name'];
                         }
-                        return Text(sectionText, style: const TextStyle(color: Colors.tealAccent, fontSize: 24, fontWeight: FontWeight.bold));
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            sectionText, 
+                            key: ValueKey<int>(activeIdx),
+                            style: const TextStyle(color: Colors.tealAccent, fontSize: 24, fontWeight: FontWeight.bold)
+                          ),
+                        );
                       }
                     ),
                     ValueListenableBuilder<int>(
@@ -3134,12 +3141,18 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                             }
                           }
                         }
-                        return Column(
-                          children: [
-                            Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold, height: 1.1)),
-                            if (nextChordText.isNotEmpty)
-                              Text("Next: $nextChordText", style: const TextStyle(color: Colors.white30, fontSize: 24, fontWeight: FontWeight.bold)),
-                          ],
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          child: Column(
+                            key: ValueKey<int>(activeIdx),
+                            children: [
+                              Text(chordText, style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold, height: 1.1)),
+                              if (nextChordText.isNotEmpty)
+                                Text("Next: $nextChordText", style: const TextStyle(color: Colors.white30, fontSize: 24, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
                         );
                       }
                     ),
