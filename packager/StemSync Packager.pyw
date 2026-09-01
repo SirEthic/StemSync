@@ -4,6 +4,12 @@ import zipfile
 import warnings
 from pathlib import Path
 
+# Inject PyTorch's CUDA DLLs into the search path for ONNX Runtime to use
+try:
+    import torch
+except ImportError:
+    pass
+
 # Suppress librosa warnings for cleaner terminal output
 warnings.filterwarnings("ignore")
 
@@ -20,7 +26,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
         raise Exception("Invalid stem folder selected!")
         
     print(f"\nProcessing '{song_name}'...")
-    audio_files = list(stem_folder.glob("*.wav")) + list(stem_folder.glob("*.mp3")) + list(stem_folder.glob("*.ogg"))
+    audio_files = list(stem_folder.glob("*.wav")) + list(stem_folder.glob("*.mp3")) + list(stem_folder.glob("*.ogg")) + list(stem_folder.glob("*.flac"))
     
     if not audio_files:
         raise Exception("No audio files found in the selected folder!")
@@ -541,7 +547,14 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     # Helper to find any .lrc file in the folder (newest first)
     def find_lrc():
+        # First check the temp folder
         lrc_files = list(stem_folder.glob("*.lrc"))
+        
+        # If not in temp folder, check right next to the original MP3!
+        if not lrc_files and original_track_path:
+            master_dir = Path(original_track_path).parent
+            lrc_files = list(master_dir.glob("*.lrc"))
+            
         if not lrc_files:
             return None
         # Sort by most recently modified, so if they have multiple, we pick the one they just downloaded!
@@ -582,7 +595,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
                 
                 messagebox.showinfo(
                     "Waiting for Lyrics...", 
-                    f"1. Download the correct .lrc file from the website.\n2. Move that downloaded file directly into your Stems folder:\n{stem_folder}\n(No need to rename it!)\n\nClick OK *ONLY AFTER* you have dropped the file in the folder to resume packaging!"
+                    f"1. Download the correct .lrc file from the website.\n2. Move that downloaded file directly into the SAME folder as your original MP3 file:\n{Path(original_track_path).parent if original_track_path else stem_folder}\n(No need to rename it!)\n\nClick OK *ONLY AFTER* you have dropped the file in the folder to resume packaging!"
                 )
                 
                 lrc_path = find_lrc()
@@ -625,26 +638,39 @@ if __name__ == "__main__":
     ctk.set_default_color_theme("green")
 
     class PrintLogger:
-        def __init__(self, root_ref, textbox):
+        def __init__(self, root_ref, textbox, progress_bar):
             self.root_ref = root_ref
             self.textbox = textbox
+            self.progress_bar = progress_bar
 
         def write(self, text):
             self.root_ref.after(0, lambda t=text: self._safe_write(t))
             
         def _safe_write(self, text):
+            import re
+            match = re.search(r'(\d+)%\|', text)
+            if match:
+                try:
+                    val = float(match.group(1)) / 100.0
+                    self.progress_bar.set(val)
+                except:
+                    pass
+                    
+            if '\r' in text:
+                return
+                
             self.textbox.insert(tk.END, text)
             self.textbox.see(tk.END)
             
         def flush(self):
             pass
 
-    def select_folder():
-        folder = filedialog.askdirectory(title="Select UVR5 Stems Folder")
-        if folder:
-            folder_var.set(folder)
+    def select_audio_file():
+        file = filedialog.askopenfilename(title="Select Master Audio File", filetypes=[("Audio", "*.mp3 *.wav *.flac")])
+        if file:
+            folder_var.set(file)
             if not song_var.get():
-                song_var.set(Path(folder).name)
+                song_var.set(Path(file).stem)
                 
     def select_out_dir():
         out = filedialog.askdirectory(title="Select Output Directory for Zip")
@@ -654,41 +680,47 @@ if __name__ == "__main__":
     def start_packaging():
         song = song_var.get().strip()
         artist = artist_var.get().strip()
-        folder = folder_var.get().strip()
+        master_file = folder_var.get().strip()
         out = out_var.get().strip()
-        orig = orig_var.get().strip()
         
-        if not song or not folder:
-            messagebox.showerror("Error", "Please provide both a Song Name and Stems Folder.")
+        if not song or not master_file:
+            messagebox.showerror("Error", "Please provide both a Song Name and Master Audio Input.")
             return
             
         if not out:
-            out = folder
+            out = os.path.dirname(master_file)
             
         btn_package.configure(state="disabled")
         btn_folder.configure(state="disabled")
         btn_out.configure(state="disabled")
-        try:
-            btn_orig.configure(state="disabled")
-        except:
-            pass
         
         def run_task():
             try:
+                root.after(0, lambda: progress_bar.set(0.0))
+                
+                out_fmt = format_var.get().split()[0].lower() # "flac", "mp3", "wav"
+                is_studio = "Studio" in quality_var.get()
+                
                 print(f"=== Starting StemSync Packaging: {song} ===")
-                create_bandtrack_zip(song, folder, out, manual_artist=artist, original_track_path=orig)
+                import tempfile, shutil
+                from zero_bleed import ZeroBleedEngine
+                
+                temp_dir = tempfile.mkdtemp()
+                try:
+                    engine = ZeroBleedEngine(output_dir=temp_dir, out_format=out_fmt, is_studio=is_studio)
+                    stems = engine.process(master_file)
+                    create_bandtrack_zip(song, temp_dir, out, manual_artist=artist, original_track_path=master_file)
+                finally:
+                    if 'temp_dir' in locals():
+                        shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception as e:
-                print(f"\n[ERROR]: {e}")
+                print(f"\\n[ERROR]: {e}")
                 err_msg = str(e)
                 root.after(0, lambda msg=err_msg: messagebox.showerror("Error", msg))
             finally:
-                root.after(0, lambda: btn_package.configure(state="normal"))
+                root.after(0, lambda: btn_package.configure(state="normal", text="Start Packaging"))
                 root.after(0, lambda: btn_folder.configure(state="normal"))
                 root.after(0, lambda: btn_out.configure(state="normal"))
-                try:
-                    root.after(0, lambda: btn_orig.configure(state="normal"))
-                except:
-                    pass
                 
         threading.Thread(target=run_task, daemon=True).start()
 
@@ -734,43 +766,40 @@ if __name__ == "__main__":
     
     song_var = tk.StringVar()
     artist_var = tk.StringVar()
-    orig_var = tk.StringVar()
-    
-    def select_orig():
-        orig = filedialog.askopenfilename(title="Select Original Song", filetypes=[("Audio", "*.mp3 *.wav *.flac")])
-        if orig:
-            orig_var.set(orig)
     
     ctk.CTkLabel(card1, text="Track Title", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
     ctk.CTkEntry(card1, textvariable=song_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 10))
-    ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 10))
+    ctk.CTkLabel(card1, text="Artist (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkEntry(card1, textvariable=artist_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Auto-detected if blank").grid(row=2, column=1, sticky="ew", padx=(0, 25), pady=(0, 20))
     
-    ctk.CTkLabel(card1, text="Original Track (Optional)", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card1, textvariable=orig_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4, placeholder_text="Improves Shazam accuracy").grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
-    btn_orig = ctk.CTkButton(card1, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_orig)
-    btn_orig.grid(row=3, column=2, padx=(0, 25), pady=(0, 20))
-    
-    # -- Card 2: Directories --
+    # -- Card 2: Input & Output --
     card2 = ctk.CTkFrame(main_frame, corner_radius=6, fg_color="#252526", border_width=1, border_color="#3E3E42")
     card2.grid(row=1, column=0, sticky="ew", pady=(0, 20))
     card2.grid_columnconfigure(1, weight=1)
     
-    ctk.CTkLabel(card2, text="Directories", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=3, sticky="w", padx=25, pady=(15, 10))
+    ctk.CTkLabel(card2, text="Input & Output", font=ctk.CTkFont(size=14, weight="normal"), text_color="#D4D4D4").grid(row=0, column=0, columnspan=3, sticky="w", padx=25, pady=(15, 10))
     
     folder_var = tk.StringVar()
     out_var = tk.StringVar()
+    format_var = tk.StringVar(value="FLAC (Lossless)")
+    quality_var = tk.StringVar(value="Standard (Fast ~5m)")
     
-    ctk.CTkLabel(card2, text="UVR5 Stems", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
+    ctk.CTkLabel(card2, text="Master Audio Input", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 10))
     ctk.CTkEntry(card2, textvariable=folder_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=1, column=1, sticky="ew", padx=(0, 15), pady=(0, 10))
-    btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_folder)
+    btn_folder = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_audio_file)
     btn_folder.grid(row=1, column=2, padx=(0, 25), pady=(0, 10))
     
-    ctk.CTkLabel(card2, text="Output Zip Dir", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 20))
-    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
+    ctk.CTkLabel(card2, text="Output Zip Dir", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=2, column=0, sticky="w", padx=25, pady=(0, 15))
+    ctk.CTkEntry(card2, textvariable=out_var, border_width=1, border_color="#3E3E42", fg_color="#1E1E1E", text_color="#D4D4D4", height=32, corner_radius=4).grid(row=2, column=1, sticky="ew", padx=(0, 15), pady=(0, 15))
     btn_out = ctk.CTkButton(card2, text="Browse...", width=80, height=32, corner_radius=4, fg_color="#333337", hover_color="#3F3F46", text_color="#D4D4D4", command=select_out_dir)
-    btn_out.grid(row=2, column=2, padx=(0, 25), pady=(0, 20))
+    btn_out.grid(row=2, column=2, padx=(0, 25), pady=(0, 15))
+
+    ctk.CTkLabel(card2, text="Stem Format", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=3, column=0, sticky="w", padx=25, pady=(0, 15))
+    ctk.CTkOptionMenu(card2, variable=format_var, values=["FLAC (Lossless)", "MP3 (Small Size)", "WAV (Raw)"], fg_color="#333337", button_color="#3F3F46", button_hover_color="#4F4F56").grid(row=3, column=1, sticky="ew", padx=(0, 15), pady=(0, 15))
+
+    ctk.CTkLabel(card2, text="AI Quality", font=ctk.CTkFont(size=12), text_color="#A6A6A6").grid(row=4, column=0, sticky="w", padx=25, pady=(0, 20))
+    ctk.CTkOptionMenu(card2, variable=quality_var, values=["Standard (Fast ~5m)", "Studio (Zero-Bleed ~1h)"], fg_color="#333337", button_color="#3F3F46", button_hover_color="#4F4F56").grid(row=4, column=1, sticky="ew", padx=(0, 15), pady=(0, 20))
     
     # -- Action Area --
     btn_package = ctk.CTkButton(main_frame, text="Start Packaging", command=start_packaging, font=ctk.CTkFont(size=14, weight="normal"), height=40, corner_radius=4, fg_color="#0E639C", text_color="#FFFFFF", hover_color="#1177BB")
@@ -781,7 +810,11 @@ if __name__ == "__main__":
     console.grid(row=3, column=0, sticky="nsew")
     main_frame.grid_rowconfigure(3, weight=1)
     
-    sys.stdout = PrintLogger(root, console)
-    sys.stderr = PrintLogger(root, console)
+    progress_bar = ctk.CTkProgressBar(main_frame, height=12, corner_radius=4, progress_color="#0E639C")
+    progress_bar.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+    progress_bar.set(0.0)
+
+    sys.stdout = PrintLogger(root, console, progress_bar)
+    sys.stderr = PrintLogger(root, console, progress_bar)
     
     root.mainloop()

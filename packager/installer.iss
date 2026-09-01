@@ -7,7 +7,7 @@ UninstallDisplayIcon={app}\StemSync Packager.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=dist
-OutputBaseFilename=StemSync_Packager_Setup
+OutputBaseFilename=StemSync_Packager_Setup_v17
 SetupIconFile=icon.ico
 
 [Files]
@@ -20,3 +20,5 @@ Name: "{autodesktop}\StemSync Packager"; Filename: "{app}\StemSync Packager.exe"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
+
+
