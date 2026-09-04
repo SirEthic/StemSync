@@ -1811,6 +1811,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         }
       } else {
         var currentList = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+        if (_sortMode == "A-Z") {
+          currentList.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
+        } else {
+          currentList.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
+        }
         final currentName = targetDir.path.split(Platform.pathSeparator).last;
         int idx = currentList.indexWhere((s) => (s['dir'] as Directory).path.endsWith(currentName));
         if (idx != -1 && idx < currentList.length - 1) {
@@ -2897,6 +2902,30 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             style: const TextStyle(color: Colors.white, fontSize: 18),
             onChanged: (val) {
               setState(() { _searchQuery = val.toLowerCase(); });
+              if (_searchQuery.isNotEmpty) {
+                 var filtered = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+                 if (filtered.isNotEmpty) {
+                    if (_sortMode == "A-Z") {
+                      filtered.sort((a, b) => a['title'].toString().compareTo(b['title'].toString()));
+                    } else {
+                      filtered.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
+                    }
+                    final target = filtered.first['dir'] as Directory;
+                    if (target.path != _loadedSongDir?.path) {
+                       Future.microtask(() async {
+                         final files = target.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.flac')).toList();
+                         for (var f in files) {
+                           if (!_audioSourceCache.containsKey(f.path)) {
+                             try {
+                               final src = await SoLoud.instance.loadFile(f.path, mode: LoadMode.memory);
+                               _audioSourceCache[f.path] = src;
+                             } catch (_) {}
+                           }
+                         }
+                       });
+                    }
+                 }
+              }
             },
           ),
           actions: [
