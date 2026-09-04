@@ -3105,7 +3105,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           valueListenable: _currentPositionNotifier,
           builder: (context, pos, child) {
             double pulse = 0.0;
-            if (isPlaying && pos > _firstBeat && _currentTempo > 0) {
+            if (_isMetronomeOn && isPlaying && pos > _firstBeat && _currentTempo > 0) {
               double interval = 60.0 / _currentTempo;
               double beats = (pos - _firstBeat) / interval;
               double beatFraction = beats - beats.floor();
