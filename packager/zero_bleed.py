@@ -185,5 +185,5 @@ class ZeroBleedEngine:
             except: pass
         
         print("\nZero-Bleed Separation Complete!")
-        print(f"Stems saved to: {self.output_dir}")
+        print("Temp stems generated successfully. Packaging zip file...")
 
