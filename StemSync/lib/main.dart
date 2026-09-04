@@ -26,6 +26,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'chord_sheet_generator.dart';
 import 'cloud_library_tab.dart';
 import 'recordings_tab.dart';
+import 'package:sound_mode_advanced/permission_handler.dart';
+import 'package:sound_mode_advanced/sound_mode.dart';
+import 'package:sound_mode_advanced/utils/ringer_mode_statuses.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
@@ -584,6 +587,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   // Bouncing State
   bool _isBouncing = false;
   
+  bool _dndEnabled = false;
   // Auto Save State
   Timer? _autoSaveTimer;
   Timer? _scrubGraceTimer;
@@ -815,6 +819,33 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                       Navigator.pop(ctx);
                       _toggleGigMode();
                     },
+                  ),
+                  StatefulBuilder(
+                    builder: (context, setModalState) {
+                      return ListTile(
+                        contentPadding: const EdgeInsets.only(left: 32, right: 24),
+                        leading: Icon(Icons.do_not_disturb_on, color: _dndEnabled ? Colors.redAccent : Colors.white),
+                        title: Text('Gig DND (Block Calls)', style: TextStyle(color: _dndEnabled ? Colors.redAccent : Colors.white, fontWeight: FontWeight.bold)),
+                        trailing: Switch(
+                          value: _dndEnabled,
+                          activeColor: Colors.redAccent,
+                          onChanged: (val) async {
+                            bool? isGranted = await PermissionHandler.permissionsGranted;
+                            if (isGranted == null || !isGranted) {
+                              await PermissionHandler.openDoNotDisturbSetting();
+                              return;
+                            }
+                            if (val) {
+                              await SoundMode.setSoundMode(RingerModeStatus.silent);
+                            } else {
+                              await SoundMode.setSoundMode(RingerModeStatus.normal);
+                            }
+                            setState(() => _dndEnabled = val);
+                            setModalState(() => _dndEnabled = val);
+                          },
+                        ),
+                      );
+                    }
                   ),
 
                 ListTile(
@@ -2603,6 +2634,9 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       _saveMixState();
+      if (isPlaying) {
+        _togglePlayPause(); // Automatically pause if a call comes in or screen locks!
+      }
     }
   }
 
