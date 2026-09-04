@@ -135,6 +135,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   
   List<TrackData> _tracks = [];
   Map<double, TrackData> _metronomeTracks = {};
+  final Map<String, AudioSource> _audioSourceCache = {};
   Map<String, dynamic>? _songMetadata;
   Bus? _stemsBus;
 
@@ -1796,14 +1797,50 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _isScrubbingChords = false;
       });
 
-      for (var t in _tracks) {
-        SoLoud.instance.stop(t.handle);
-        SoLoud.instance.disposeSource(t.source);
+      // Predict next song for preloading cache management
+      Directory? nextDir;
+      if (_activePlaylist != null) {
+        final list = _playlists[_activePlaylist!]!;
+        final currentName = targetDir.path.split(Platform.pathSeparator).last;
+        int idx = list.indexOf(currentName);
+        if (idx != -1 && idx < list.length - 1) {
+          String nextName = list[idx + 1];
+          try {
+            nextDir = _savedSongs.firstWhere((s) => s['dir'].path.endsWith(nextName))['dir'];
+          } catch (_) {}
+        }
+      } else {
+        var currentList = _savedSongs.where((s) => s['searchKey'].toString().contains(_searchQuery)).toList();
+        final currentName = targetDir.path.split(Platform.pathSeparator).last;
+        int idx = currentList.indexWhere((s) => (s['dir'] as Directory).path.endsWith(currentName));
+        if (idx != -1 && idx < currentList.length - 1) {
+          nextDir = currentList[idx + 1]['dir'];
+        }
       }
-      for (var t in _metronomeTracks.values) {
-        SoLoud.instance.stop(t.handle);
-        SoLoud.instance.disposeSource(t.source);
+
+      final audioFiles = targetDir.listSync(recursive: true).whereType<File>().where((f) => 
+        f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
+      ).toList();
+
+      List<String> keepPaths = audioFiles.map((f) => f.path).toList();
+      if (nextDir != null) {
+        final nextFiles = nextDir.listSync(recursive: true).whereType<File>().where((f) => 
+          f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
+        ).toList();
+        keepPaths.addAll(nextFiles.map((f) => f.path));
       }
+
+      for (var t in _tracks) SoLoud.instance.stop(t.handle);
+      for (var t in _metronomeTracks.values) SoLoud.instance.stop(t.handle);
+      
+      _audioSourceCache.removeWhere((path, source) {
+        if (!keepPaths.contains(path)) {
+          SoLoud.instance.disposeSource(source);
+          return true;
+        }
+        return false;
+      });
+
       if (_stemsBus != null) {
         try { _stemsBus!.dispose(); } catch (_) {}
         _stemsBus = null;
@@ -1822,10 +1859,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       _showLyrics = false;
       _currentPositionNotifier.value = 0.0;
 
-      final audioFiles = targetDir.listSync(recursive: true).whereType<File>().where((f) => 
-        f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
-      ).toList();
-
       audioFiles.sort((a, b) {
         int order(String name) {
           final l = name.toLowerCase();
@@ -1839,8 +1872,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         return order(a.path).compareTo(order(b.path));
       });
 
-      // Start loading audio in the background IMMEDIATELY to hide JSON parsing latency
-      final audioLoadFuture = Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path, mode: LoadMode.disk)));
+      // Start loading audio into memory (using preloaded cache if available)
+      final audioLoadFuture = Future.wait(audioFiles.map((f) async {
+        if (_audioSourceCache.containsKey(f.path)) return _audioSourceCache[f.path]!;
+        final source = await SoLoud.instance.loadFile(f.path, mode: LoadMode.memory);
+        _audioSourceCache[f.path] = source;
+        return source;
+      }));
 
       final metaFile = File('${targetDir.path}/song_metadata.json');
       if (metaFile.existsSync()) {
@@ -1967,6 +2005,23 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       
       if (autoPlay) {
         _togglePlayPause();
+      }
+
+      // 6. Lookahead Preloader for the NEXT song!
+      if (nextDir != null) {
+        Future.microtask(() async {
+          final nextFiles = nextDir!.listSync(recursive: true).whereType<File>().where((f) => 
+            f.path.endsWith('.wav') || f.path.endsWith('.mp3') || f.path.endsWith('.ogg') || f.path.endsWith('.flac')
+          ).toList();
+          for (var f in nextFiles) {
+            if (!_audioSourceCache.containsKey(f.path)) {
+              try {
+                final source = await SoLoud.instance.loadFile(f.path, mode: LoadMode.memory);
+                _audioSourceCache[f.path] = source;
+              } catch (_) {}
+            }
+          }
+        });
       }
 
     } catch (e) {
@@ -2494,14 +2549,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _autoSaveTimer?.cancel();
     _countInTimer?.cancel();
     _scrubGraceTimer?.cancel();
-    for (var t in _tracks) {
-      SoLoud.instance.stop(t.handle);
-      SoLoud.instance.disposeSource(t.source);
+    for (var t in _tracks) SoLoud.instance.stop(t.handle);
+    for (var t in _metronomeTracks.values) SoLoud.instance.stop(t.handle);
+    for (var source in _audioSourceCache.values) {
+      SoLoud.instance.disposeSource(source);
     }
-    for (var t in _metronomeTracks.values) {
-      SoLoud.instance.stop(t.handle);
-      SoLoud.instance.disposeSource(t.source);
-    }
+    _audioSourceCache.clear();
     if (_beepSource != null) {
       SoLoud.instance.disposeSource(_beepSource!);
     }
