@@ -1868,6 +1868,10 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       final lrcFile = File('${targetDir.path}/lyrics.lrc');
       if (lrcFile.existsSync()) {
         _parseLrcContent(lrcFile.readAsStringSync());
+      } else {
+        String sName = _songMetadata?['song_name'] ?? targetDir.path.split(Platform.pathSeparator).last;
+        String? aName = _songMetadata?['artist'] as String?;
+        _fetchLyricsFromLRCLIB(targetDir, sName, aName);
       }
 
 
