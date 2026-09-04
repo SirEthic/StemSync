@@ -96,6 +96,47 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     if (_activeFolderId.isNotEmpty) fetchCloudSongs();
   }
 
+  Future<void> _confirmRemoveFolder(String id, String name) async {
+    final bool? result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 28),
+            SizedBox(width: 12),
+            Text('Remove Folder', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to disconnect "$name"? You will not be able to download songs from this folder until you re-link it.',
+          style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.withValues(alpha: 0.15),
+              foregroundColor: Colors.redAccent,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      _removeFolder(id);
+    }
+  }
+
 
 
   String _extractFolderId(String url) {
@@ -570,43 +611,67 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     return Column(
       children: [
         Container(
-          height: 60,
-          margin: const EdgeInsets.only(top: 16, bottom: 8),
+          height: 64,
+          margin: const EdgeInsets.only(top: 16, bottom: 12),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _folders.length + 1,
             itemBuilder: (context, index) {
               if (index == _folders.length) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 8.0, right: 16.0),
-                  child: ActionChip(
-                    backgroundColor: Colors.white12,
-                    label: const Text("Add Folder", style: TextStyle(color: Colors.white70)),
-                    avatar: const Icon(Icons.add, color: Colors.white70, size: 18),
-                    onPressed: _promptForFolderLink,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white12)),
+                return GestureDetector(
+                  onTap: _promptForFolderLink,
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 4.0, right: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline, color: Colors.tealAccent.withValues(alpha: 0.8), size: 20),
+                        const SizedBox(width: 8),
+                        const Text("Connect", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
+                      ],
+                    ),
                   ),
                 );
               }
               final folder = _folders[index];
               final isActive = folder['id'] == _activeFolderId;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: InputChip(
-                  backgroundColor: isActive ? Colors.teal.withValues(alpha: 0.2) : Colors.black45,
-                  side: BorderSide(color: isActive ? Colors.tealAccent : Colors.white24),
-                  label: Text(folder['name'] ?? 'Folder', style: TextStyle(color: isActive ? Colors.tealAccent : Colors.white)),
-                  avatar: Icon(Icons.folder, color: isActive ? Colors.tealAccent : Colors.white54, size: 18),
-                  onSelected: (b) {
-                    setState(() { _activeFolderId = folder['id']!; _cloudSongs = []; });
-                    _saveFolders();
-                    fetchCloudSongs();
-                  },
-                  onDeleted: () {
-                     _removeFolder(folder['id']!);
-                  },
-                  deleteIcon: Icon(Icons.close, color: isActive ? Colors.tealAccent.withValues(alpha: 0.8) : Colors.white54, size: 18),
+              return GestureDetector(
+                onTap: () {
+                  if (isActive) return;
+                  setState(() { _activeFolderId = folder['id']!; _cloudSongs = []; });
+                  _saveFolders();
+                  fetchCloudSongs();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 12.0),
+                  padding: const EdgeInsets.only(left: 16, right: 4),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.teal.withValues(alpha: 0.15) : const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isActive ? Colors.tealAccent.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), width: isActive ? 1.5 : 1),
+                    boxShadow: isActive ? [BoxShadow(color: Colors.teal.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isActive ? Icons.folder_shared : Icons.folder_outlined, color: isActive ? Colors.tealAccent : Colors.white54, size: 20),
+                      const SizedBox(width: 10),
+                      Text(folder['name'] ?? 'Folder', style: TextStyle(color: isActive ? Colors.white : Colors.white70, fontWeight: isActive ? FontWeight.bold : FontWeight.normal, fontSize: 15)),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        icon: Icon(Icons.close, color: isActive ? Colors.tealAccent.withValues(alpha: 0.7) : Colors.white38, size: 18),
+                        onPressed: () => _confirmRemoveFolder(folder['id']!, folder['name'] ?? 'Folder'),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
