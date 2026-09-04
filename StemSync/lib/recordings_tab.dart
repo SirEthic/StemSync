@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:share_plus/share_plus.dart';
-import 'package:flutter_soloud/flutter_soloud.dart';
+import 'recording_player_sheet.dart';
 
 class RecordingsTab extends StatefulWidget {
   const RecordingsTab({super.key});
@@ -16,9 +16,7 @@ class RecordingsTabState extends State<RecordingsTab> {
   bool _loading = true;
   String _debugPath = "";
   
-  SoundHandle? _playingHandle;
-  AudioSource? _playingSource;
-  File? _playingFile;
+
 
   @override
   void initState() {
@@ -27,12 +25,6 @@ class RecordingsTabState extends State<RecordingsTab> {
   }
 
 
-  @override
-  void dispose() {
-    if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
-    if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
-    super.dispose();
-  }
 
   Future<void> loadRecordings() async {
     setState(() => _loading = true);
@@ -94,39 +86,21 @@ class RecordingsTabState extends State<RecordingsTab> {
                 final size = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
                 final dateStr = file.lastModifiedSync().toString().split('.')[0];
                 
-                final isPlaying = _playingFile == file;
                 return ListTile(
-                  leading: CircleAvatar(backgroundColor: isPlaying ? Colors.teal : Colors.redAccent, child: Icon(isPlaying ? Icons.multitrack_audio : Icons.mic, color: Colors.white)),
-                  title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: isPlaying ? Colors.tealAccent : Colors.white)),
+                  leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.multitrack_audio, color: Colors.white)),
+                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                   subtitle: Text('$size MB  •  $dateStr', style: const TextStyle(color: Colors.grey)),
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => RecordingPlayerSheet(file: file, title: name),
+                    );
+                  },
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle_fill, color: Colors.tealAccent, size: 28),
-                        onPressed: () async {
-                          if (isPlaying) {
-                            if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
-                            if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
-                            setState(() {
-                              _playingHandle = null;
-                              _playingSource = null;
-                              _playingFile = null;
-                            });
-                          } else {
-                            if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
-                            if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
-                            
-                            final source = await SoLoud.instance.loadFile(file.path);
-                            final handle = SoLoud.instance.play(source);
-                            setState(() {
-                              _playingSource = source;
-                              _playingHandle = handle;
-                              _playingFile = file;
-                            });
-                          }
-                        },
-                      ),
                       IconButton(
                         icon: const Icon(Icons.share, color: Colors.white70),
                         onPressed: () {
@@ -150,9 +124,6 @@ class RecordingsTabState extends State<RecordingsTab> {
                           ) ?? false;
                           
                           if (confirm) {
-                            if (isPlaying && _playingHandle != null) {
-                              SoLoud.instance.stop(_playingHandle!);
-                            }
                             await file.delete();
                             loadRecordings();
                           }
