@@ -118,7 +118,7 @@ class RecordingsTabState extends State<RecordingsTab> {
                             if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
                             
                             final source = await SoLoud.instance.loadFile(file.path);
-                            final handle = await SoLoud.instance.play(source);
+                            final handle = SoLoud.instance.play(source);
                             setState(() {
                               _playingSource = source;
                               _playingHandle = handle;
