@@ -132,6 +132,7 @@ class MixerScreen extends StatefulWidget {
 
 class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final GlobalKey<CloudLibraryTabState> _cloudTabKey = GlobalKey<CloudLibraryTabState>();
+  final GlobalKey<RecordingsTabState> _recordingsTabKey = GlobalKey<RecordingsTabState>();
   bool _isLoading = false;
   bool _isGigMode = false;
   StreamSubscription<UserAccelerometerEvent>? _accelSubscription;
@@ -752,21 +753,28 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _recordingSeconds = 0;
       });
       if (path != null && mounted) {
-        // Move from temp to recordings folder
-        final docDir = await getApplicationDocumentsDirectory();
-        final recDir = Directory('${docDir.path}/Recordings');
-        if (!recDir.existsSync()) recDir.createSync();
-        
-        final safeName = _songMetadata != null ? (_songMetadata!['title'] ?? 'Live') : 'Live';
-        final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
-        final finalFile = File('${recDir.path}/${safeName}_$timestamp.wav');
-        
-        await File(path).copy(finalFile.path);
-        await File(path).delete();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gig recorded and saved to Recordings!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.teal),
-        );
+        try {
+          // Move from temp to recordings folder
+          final docDir = await getApplicationDocumentsDirectory();
+          final recDir = Directory('${docDir.path}/Recordings');
+          if (!recDir.existsSync()) recDir.createSync();
+          
+          String rawName = _songMetadata != null ? (_songMetadata!['title'] ?? 'Live') : 'Live';
+          final safeName = rawName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+          final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+          final finalFile = File('${recDir.path}/${safeName}_$timestamp.wav');
+          
+          await File(path).copy(finalFile.path);
+          await File(path).delete();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gig recorded and saved to Recordings!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.teal),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error saving recording: $e', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+          );
+        }
       }
     } else {
       if (await _audioRecorder.hasPermission()) {

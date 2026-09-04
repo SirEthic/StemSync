@@ -7,20 +7,20 @@ class RecordingsTab extends StatefulWidget {
   const RecordingsTab({super.key});
 
   @override
-  State<RecordingsTab> createState() => _RecordingsTabState();
+  State<RecordingsTab> createState() => RecordingsTabState();
 }
 
-class _RecordingsTabState extends State<RecordingsTab> {
+class RecordingsTabState extends State<RecordingsTab> {
   List<File> _recordings = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadRecordings();
+    loadRecordings();
   }
 
-  Future<void> _loadRecordings() async {
+  Future<void> loadRecordings() async {
     final docDir = await getApplicationDocumentsDirectory();
     final recDir = Directory('${docDir.path}/Recordings');
     if (recDir.existsSync()) {
@@ -65,7 +65,7 @@ class _RecordingsTabState extends State<RecordingsTab> {
                 icon: const Icon(Icons.delete, color: Colors.redAccent),
                 onPressed: () async {
                   await file.delete();
-                  _loadRecordings();
+                  loadRecordings();
                 },
               ),
             ],
