@@ -25,6 +25,7 @@ class CloudLibraryTab extends StatefulWidget {
 }
 
 class CloudLibraryTabState extends State<CloudLibraryTab> {
+  List<Map<String, String>> _folders = [];
   String _activeFolderId = '';
   List<dynamic> _cloudSongs = [];
   bool _isLoading = false;
@@ -41,7 +42,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
   @override
   void initState() {
     super.initState();
-    _loadFolderId();
+    _loadFolders();
   }
 
   Future<void> _loadFolders() async {
