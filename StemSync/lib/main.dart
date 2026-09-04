@@ -1840,7 +1840,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
       });
 
       // Start loading audio in the background IMMEDIATELY to hide JSON parsing latency
-      final audioLoadFuture = Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path, mode: LoadMode.disk)));
+      final audioLoadFuture = Future.wait(audioFiles.map((f) => SoLoud.instance.loadFile(f.path, mode: LoadMode.memory)));
 
       final metaFile = File('${targetDir.path}/song_metadata.json');
       if (metaFile.existsSync()) {
