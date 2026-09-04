@@ -70,37 +70,49 @@ class RecordingsTabState extends State<RecordingsTab> {
       onRefresh: loadRecordings,
       color: Colors.tealAccent,
       backgroundColor: const Color(0xFF1A1A1A),
-      child: ListView.builder(
-        itemCount: _recordings.length,
-        itemBuilder: (context, index) {
-          final file = _recordings[index];
-          final name = file.path.split(Platform.pathSeparator).last.replaceAll(RegExp(r'\.wav$', caseSensitive: false), '');
-          final size = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
-          
-          return ListTile(
-            leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.mic, color: Colors.white)),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('$size MB  •  ${file.lastModifiedSync().toString().split('.')[0]}', style: const TextStyle(color: Colors.grey)),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.share, color: Colors.tealAccent),
-                  onPressed: () {
-                    Share.shareXFiles([XFile(file.path)], text: 'Check out this live gig recording!');
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  onPressed: () async {
-                    await file.delete();
-                    loadRecordings();
-                  },
-                ),
-              ],
-            ),
-          );
-        },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 100), // padding for FAB
+          child: Column(
+            children: _recordings.map((file) {
+              try {
+                final name = file.path.split(Platform.pathSeparator).last.replaceAll(RegExp(r'\.wav$', caseSensitive: false), '');
+                final size = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
+                final dateStr = file.lastModifiedSync().toString().split('.')[0];
+                
+                return ListTile(
+                  leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.mic, color: Colors.white)),
+                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('$size MB  •  $dateStr', style: const TextStyle(color: Colors.grey)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.share, color: Colors.tealAccent),
+                        onPressed: () {
+                          Share.shareXFiles([XFile(file.path)], text: 'Check out this live gig recording!');
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () async {
+                          await file.delete();
+                          loadRecordings();
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              } catch (e) {
+                return ListTile(
+                  title: const Text("Error loading file", style: TextStyle(color: Colors.red)),
+                  subtitle: Text(e.toString(), style: const TextStyle(color: Colors.redAccent)),
+                );
+              }
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
