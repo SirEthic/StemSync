@@ -2634,7 +2634,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       _saveMixState();
-      if (isPlaying) {
+      bool _isPlaying = _tracks.isNotEmpty && SoLoud.instance.getIsValidVoiceHandle(_tracks.first.handle) && !SoLoud.instance.getPause(_tracks.first.handle);
+      if (_isPlaying) {
         _togglePlayPause(); // Automatically pause if a call comes in or screen locks!
       }
     }
