@@ -4,6 +4,18 @@ import zipfile
 import warnings
 from pathlib import Path
 
+# Fix terminal popups (CREATE_NO_WINDOW)
+import subprocess
+import platform
+if platform.system() == "Windows":
+    _original_popen = subprocess.Popen
+    def custom_popen(*args, **kwargs):
+        if 'creationflags' not in kwargs:
+            kwargs['creationflags'] = 0x08000000
+        return _original_popen(*args, **kwargs)
+    subprocess.Popen = custom_popen
+
+
 
 
 def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist="", original_track_path=""):
@@ -22,6 +34,7 @@ def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist
     
     print("Combining stems for accurate full-mix beat detection...")
     import numpy as np
+    import librosa
     
     # Find the longest stem to initialize y
     max_len = 0
