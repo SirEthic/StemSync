@@ -752,7 +752,15 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         _isRecording = false;
         _recordingSeconds = 0;
       });
-      if (path != null && mounted) {
+      
+      if (path == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recording failed: Audio path was null.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      if (mounted) {
         try {
           // Move from temp to recordings folder
           final docDir = await getApplicationDocumentsDirectory();
@@ -777,28 +785,63 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         }
       }
     } else {
-      if (await _audioRecorder.hasPermission()) {
-        final tempDir = await getTemporaryDirectory();
-        _currentRecordingPath = '${tempDir.path}/temp_record.wav';
-        
-        await _audioRecorder.start(
-          const RecordConfig(
-            encoder: AudioEncoder.wav,
-            sampleRate: 44100,
-            numChannels: 2,
-            bitRate: 1411200,
-          ),
-          path: _currentRecordingPath!,
+      bool hasPerm = await _audioRecorder.hasPermission();
+      if (hasPerm) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          _currentRecordingPath = '${tempDir.path}/temp_record.wav';
+          
+          await _audioRecorder.start(
+            const RecordConfig(
+              encoder: AudioEncoder.wav,
+              sampleRate: 44100,
+              numChannels: 2,
+              bitRate: 1411200,
+            ),
+            path: _currentRecordingPath!,
+          );
+          
+          setState(() {
+            _isRecording = true;
+            _recordingSeconds = 0;
+          });
+          
+          _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+            setState(() { _recordingSeconds++; });
+          });
+        } catch (e) {
+          try {
+            await _audioRecorder.start(
+              const RecordConfig(
+                encoder: AudioEncoder.wav,
+                sampleRate: 44100,
+                numChannels: 1, // Fallback to mono if stereo fails (common on built-in mics)
+              ),
+              path: _currentRecordingPath!,
+            );
+            
+            setState(() {
+              _isRecording = true;
+              _recordingSeconds = 0;
+            });
+            
+            _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              setState(() { _recordingSeconds++; });
+            });
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Warning: Stereo failed, recording in Mono.', style: TextStyle(color: Colors.orange)), backgroundColor: Colors.black87),
+            );
+          } catch (fallbackErr) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Hardware failed to start recording: $fallbackErr', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission denied! Cannot record.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
         );
-        
-        setState(() {
-          _isRecording = true;
-          _recordingSeconds = 0;
-        });
-        
-        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          setState(() { _recordingSeconds++; });
-        });
       }
     }
   }
