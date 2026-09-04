@@ -4,16 +4,16 @@ import zipfile
 import warnings
 from pathlib import Path
 
-# Fix terminal popups (CREATE_NO_WINDOW)
+# Fix terminal popups (CREATE_NO_WINDOW) safely
 import subprocess
 import platform
 if platform.system() == "Windows":
-    _original_popen = subprocess.Popen
-    def custom_popen(*args, **kwargs):
+    _original_popen_init = subprocess.Popen.__init__
+    def custom_popen_init(self, *args, **kwargs):
         if 'creationflags' not in kwargs:
             kwargs['creationflags'] = 0x08000000
-        return _original_popen(*args, **kwargs)
-    subprocess.Popen = custom_popen
+        _original_popen_init(self, *args, **kwargs)
+    subprocess.Popen.__init__ = custom_popen_init
 
 
 
