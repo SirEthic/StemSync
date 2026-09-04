@@ -130,7 +130,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
                 text: TextSpan(
                   style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
                   children: [
-                    const TextSpan(text: 'Are you sure you want to remove\\n'),
+                    const TextSpan(text: 'Are you sure you want to remove\n'),
                     TextSpan(text: '"$name"', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     const TextSpan(text: ' from your library?'),
                   ],
