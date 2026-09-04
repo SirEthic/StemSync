@@ -4,21 +4,7 @@ import zipfile
 import warnings
 from pathlib import Path
 
-# Inject PyTorch's CUDA DLLs into the search path for ONNX Runtime to use
-try:
-    import torch
-except ImportError:
-    pass
 
-# Suppress librosa warnings for cleaner terminal output
-warnings.filterwarnings("ignore")
-
-try:
-    import librosa
-except ImportError:
-    print("Error: 'librosa' is not installed.")
-    print("Please run: pip install librosa soundfile")
-    exit(1)
 
 def create_bandtrack_zip(song_name, stem_folder_path, output_path, manual_artist="", original_track_path=""):
     stem_folder = Path(stem_folder_path)
