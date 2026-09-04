@@ -25,7 +25,7 @@ class CloudLibraryTab extends StatefulWidget {
 }
 
 class CloudLibraryTabState extends State<CloudLibraryTab> {
-  String _folderId = '';
+  String _activeFolderId = '';
   List<dynamic> _cloudSongs = [];
   bool _isLoading = false;
   final Set<String> _downloadingIds = {};
@@ -44,25 +44,58 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     _loadFolderId();
   }
 
-  Future<void> _loadFolderId() async {
+  Future<void> _loadFolders() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _folderId = prefs.getString('drive_folder_id') ?? '';
-    });
-    if (_folderId.isNotEmpty) {
-      // Intentionally do not auto-fetch to prevent excessive API calls.
-      // User must manually pull-to-refresh.
+    final foldersJson = prefs.getString('drive_folders');
+    if (foldersJson != null) {
+      final List<dynamic> list = json.decode(foldersJson);
+      _folders = list.map((e) => Map<String, String>.from(e)).toList();
+      _activeFolderId = prefs.getString('drive_active_folder_id') ?? '';
+      if (_activeFolderId.isEmpty && _folders.isNotEmpty) _activeFolderId = _folders.first['id']!;
+    } else {
+      String oldFolder = prefs.getString('drive_folder_id') ?? '';
+      if (oldFolder.isNotEmpty) {
+         _folders = [{'id': oldFolder, 'name': 'Band Drive'}];
+         _activeFolderId = oldFolder;
+         _saveFolders();
+      }
     }
+    setState(() {});
   }
 
-  Future<void> _saveFolderId(String id) async {
+  Future<void> _saveFolders() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('drive_folder_id', id);
-    setState(() {
-      _folderId = id;
-    });
-    fetchCloudSongs();
+    await prefs.setString('drive_folders', json.encode(_folders));
+    await prefs.setString('drive_active_folder_id', _activeFolderId);
   }
+
+  Future<String?> _fetchFolderName(String folderId) async {
+    try {
+      final url = Uri.parse("https://www.googleapis.com/drive/v3/files/$folderId?fields=name&key=$_apiKey");
+      final client = await ProxyClient.createClient(url.toString()); 
+      final response = await client.get(url); 
+      client.close();
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['name'];
+      }
+    } catch (e) {}
+    return null;
+  }
+  
+  void _removeFolder(String id) {
+    setState(() {
+      _folders.removeWhere((f) => f['id'] == id);
+      if (_activeFolderId == id) {
+        _activeFolderId = _folders.isNotEmpty ? _folders.first['id']! : '';
+        _cloudSongs = [];
+      }
+    });
+    _saveFolders();
+    if (_activeFolderId.isNotEmpty) fetchCloudSongs();
+  }
+
+
 
   String _extractFolderId(String url) {
     // Basic regex to find Google Drive folder ID in a URL
@@ -156,9 +189,21 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
           ElevatedButton(
             onPressed: () {
               final id = _extractFolderId(controller.text);
-              if (id.isNotEmpty) {
-                _saveFolderId(id);
-              }
+                    if (id.isNotEmpty) {
+                      setState(() { _isLoading = true; });
+                      _fetchFolderName(id).then((name) {
+                         if (!mounted) return;
+                         setState(() {
+                           _isLoading = false;
+                           // Avoid duplicates
+                           _folders.removeWhere((f) => f['id'] == id);
+                           _folders.add({'id': id, 'name': name ?? 'Shared Drive'});
+                           _activeFolderId = id;
+                         });
+                         _saveFolders();
+                         fetchCloudSongs();
+                      });
+                    }
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
@@ -176,11 +221,11 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
   }
 
   Future<void> fetchCloudSongs() async {
-    if (_folderId.isEmpty) return;
+    if (_activeFolderId.isEmpty) return;
     setState(() { _isLoading = true; });
 
     try {
-      final url = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name+contains+'.zip'&fields=files(id,name,size)&key=$_apiKey");
+      final url = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_activeFolderId'+in+parents+and+name+contains+'.zip'&fields=files(id,name,size)&key=$_apiKey");
       final client = await ProxyClient.createClient(url.toString()); final response = await client.get(url); client.close();
 
       if (response.statusCode == 200) {
@@ -214,7 +259,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
 
         // 🚀 COLLABORATIVE SETLISTS SYNC
         try {
-          final setlistsUrl = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_folderId'+in+parents+and+name='setlists.json'&fields=files(id)&key=$_apiKey");
+          final setlistsUrl = Uri.parse("https://www.googleapis.com/drive/v3/files?q='$_activeFolderId'+in+parents+and+name='setlists.json'&fields=files(id)&key=$_apiKey");
           final client = await ProxyClient.createClient(setlistsUrl.toString()); final setlistsRes = await client.get(setlistsUrl); client.close();
           if (setlistsRes.statusCode == 200) {
             final setlistData = json.decode(setlistsRes.body);
@@ -472,7 +517,7 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_folderId.isEmpty) {
+    if (_folders.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -524,32 +569,46 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
     return Column(
       children: [
         Container(
-          margin: const EdgeInsets.all(16.0),
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.teal.withValues(alpha: 0.3), width: 1),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.cloud_done, color: Colors.tealAccent, size: 28),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Connected to Drive", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text("Auto-syncing .zip files", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
+          height: 60,
+          margin: const EdgeInsets.only(top: 16, bottom: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _folders.length + 1,
+            itemBuilder: (context, index) {
+              if (index == _folders.length) {
+                return Padding(
+                  padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+                  child: ActionChip(
+                    backgroundColor: Colors.white12,
+                    label: const Text("Add Folder", style: TextStyle(color: Colors.white70)),
+                    avatar: const Icon(Icons.add, color: Colors.white70, size: 18),
+                    onPressed: _promptForFolderLink,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white12)),
+                  ),
+                );
+              }
+              final folder = _folders[index];
+              final isActive = folder['id'] == _activeFolderId;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: InputChip(
+                  backgroundColor: isActive ? Colors.teal.withValues(alpha: 0.2) : Colors.black45,
+                  side: BorderSide(color: isActive ? Colors.tealAccent : Colors.white24),
+                  label: Text(folder['name'] ?? 'Folder', style: TextStyle(color: isActive ? Colors.tealAccent : Colors.white)),
+                  avatar: Icon(Icons.folder, color: isActive ? Colors.tealAccent : Colors.white54, size: 18),
+                  onSelected: (b) {
+                    setState(() { _activeFolderId = folder['id']!; _cloudSongs = []; });
+                    _saveFolders();
+                    fetchCloudSongs();
+                  },
+                  onDeleted: () {
+                     _removeFolder(folder['id']!);
+                  },
+                  deleteIcon: Icon(Icons.close, color: isActive ? Colors.tealAccent.withValues(alpha: 0.8) : Colors.white54, size: 18),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.white70),
-                tooltip: "Change Folder",
-                onPressed: _promptForFolderLink,
-              ),
-            ],
+              );
+            }
           ),
         ),
         Expanded(
