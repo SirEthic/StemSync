@@ -764,9 +764,6 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         try {
           // Move from temp to recordings folder
           final docDir = await getApplicationDocumentsDirectory();
-          final recDir = Directory('${docDir.path}/Recordings');
-          if (!recDir.existsSync()) recDir.createSync();
-          
           String rawName = 'Live';
           if (_songMetadata != null && _songMetadata!['song_name'] != null) {
             rawName = _songMetadata!['song_name'].toString();
@@ -778,14 +775,74 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           final now = DateTime.now();
           final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
           final timeStr = "${now.hour.toString().padLeft(2, '0')}h${now.minute.toString().padLeft(2, '0')}m";
-          final finalFile = File('${recDir.path}/Live Mix - $safeName ($dateStr $timeStr).wav');
+          final defaultName = 'Live Mix - $safeName ($dateStr $timeStr)';
           
-          await File(path).copy(finalFile.path);
-          await File(path).delete();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gig recorded and saved to Recordings!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.teal),
+          final TextEditingController nameController = TextEditingController(text: defaultName);
+
+          final String? chosenName = await showDialog<String>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: const Text("Save Recording", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Name your live recording:", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, null),
+                  child: const Text("Discard", style: TextStyle(color: Colors.redAccent)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, nameController.text),
+                  child: const Text("Save", style: TextStyle(color: Colors.tealAccent)),
+                ),
+              ],
+            ),
           );
+
+          if (chosenName != null && chosenName.trim().isNotEmpty) {
+            try {
+              final docDir = await getApplicationDocumentsDirectory();
+              final recDir = Directory('${docDir.path}/Recordings');
+              if (!recDir.existsSync()) recDir.createSync();
+              
+              final finalSafeName = chosenName.trim().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+              File finalFile = File('${recDir.path}/$finalSafeName.wav');
+              
+              int counter = 1;
+              while (finalFile.existsSync()) {
+                finalFile = File('${recDir.path}/$finalSafeName ($counter).wav');
+                counter++;
+              }
+              
+              await File(path).copy(finalFile.path);
+              await File(path).delete();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Gig recorded and saved to Recordings!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.teal),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error saving recording: $e', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+              );
+            }
+          } else {
+            try { await File(path).delete(); } catch (_) {}
+          }
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error saving recording: $e', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
