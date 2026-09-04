@@ -767,7 +767,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           final recDir = Directory('${docDir.path}/Recordings');
           if (!recDir.existsSync()) recDir.createSync();
           
-          String rawName = _songMetadata != null ? (_songMetadata!['title'] ?? 'Live') : 'Live';
+          String rawName = 'Live';
+          if (_songMetadata != null && _songMetadata!['song_name'] != null) {
+            rawName = _songMetadata!['song_name'].toString();
+          } else if (_activeSongDir != null) {
+            rawName = _activeSongDir!.path.split(Platform.pathSeparator).last;
+          }
           final safeName = rawName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
           
           final now = DateTime.now();
