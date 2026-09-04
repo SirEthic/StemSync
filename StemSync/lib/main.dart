@@ -3277,6 +3277,7 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
                     });
                   },
                 ),
+                RecordingsTab(key: _recordingsTabKey),
               ],
             ),
             if (_isLibraryLoading)
@@ -3290,7 +3291,12 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _libraryTabIndex,
-          onTap: (idx) => setState(() => _libraryTabIndex = idx),
+          onTap: (idx) {
+            setState(() => _libraryTabIndex = idx);
+            if (idx == 3) {
+              _recordingsTabKey.currentState?.loadRecordings();
+            }
+          },
           selectedItemColor: Colors.tealAccent,
           unselectedItemColor: Colors.grey,
           backgroundColor: Colors.black,
