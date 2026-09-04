@@ -51,6 +51,7 @@ dependencies:
   wakelock_plus: ^1.7.0
   flutter_system_proxy: ^0.2.1
   sensors_plus: ^7.1.0
+  record: ^6.2.1
 
 dev_dependencies:
   flutter_test:

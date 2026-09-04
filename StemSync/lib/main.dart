@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'proxy_client.dart';
@@ -24,6 +25,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'chord_sheet_generator.dart';
 import 'cloud_library_tab.dart';
+import 'recordings_tab.dart';
 
 Future<void> _extractZipInIsolate(Map<String, String> args) async {
   final targetPath = args['targetPath']!;
@@ -133,6 +135,13 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
   DateTime _lastKnock = DateTime.now();
   DateTime? _lastBackPressTime;
   
+  // USB Recording State
+  final _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  String? _currentRecordingPath;
+  Timer? _recordingTimer;
+  int _recordingSeconds = 0;
+
   List<TrackData> _tracks = [];
   Map<double, TrackData> _metronomeTracks = {};
   final Map<String, AudioSource> _audioSourceCache = {};
@@ -728,6 +737,58 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     await beepFile.writeAsBytes(buffer.buffer.asUint8List());
     
     _beepSource = await SoLoud.instance.loadFile(beepFile.path);
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      final path = await _audioRecorder.stop();
+      _recordingTimer?.cancel();
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = 0;
+      });
+      if (path != null && mounted) {
+        // Move from temp to recordings folder
+        final docDir = await getApplicationDocumentsDirectory();
+        final recDir = Directory('${docDir.path}/Recordings');
+        if (!recDir.existsSync()) recDir.createSync();
+        
+        final safeName = _songMetadata != null ? (_songMetadata!['title'] ?? 'Live') : 'Live';
+        final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+        final finalFile = File('${recDir.path}/${safeName}_$timestamp.wav');
+        
+        await File(path).copy(finalFile.path);
+        await File(path).delete();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gig recorded and saved to Recordings!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.teal),
+        );
+      }
+    } else {
+      if (await _audioRecorder.hasPermission()) {
+        final tempDir = await getTemporaryDirectory();
+        _currentRecordingPath = '${tempDir.path}/temp_record.wav';
+        
+        await _audioRecorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.wav,
+            sampleRate: 44100,
+            numChannels: 2,
+            bitRate: 1411200,
+          ),
+          path: _currentRecordingPath!,
+        );
+        
+        setState(() {
+          _isRecording = true;
+          _recordingSeconds = 0;
+        });
+        
+        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() { _recordingSeconds++; });
+        });
+      }
+    }
   }
 
   void _showMixerOptionsMenu() {
@@ -2552,6 +2613,8 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
     _intentDataStreamSubscription?.cancel();
     _ticker.dispose();
     _autoSaveTimer?.cancel();
+    _recordingTimer?.cancel();
+    _audioRecorder.dispose();
     _countInTimer?.cancel();
     _scrubGraceTimer?.cancel();
     for (var t in _tracks) SoLoud.instance.stop(t.handle);
@@ -3149,9 +3212,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
             BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Songs"),
             BottomNavigationBarItem(icon: Icon(Icons.queue_music), label: "Setlists"),
             BottomNavigationBarItem(icon: Icon(Icons.cloud), label: "Cloud"),
+            BottomNavigationBarItem(icon: Icon(Icons.mic), label: "Recordings"),
           ],
+          type: BottomNavigationBarType.fixed,
         ),
-        floatingActionButton: _libraryTabIndex == 2
+        floatingActionButton: (_libraryTabIndex == 2 || _libraryTabIndex == 3)
           ? null 
           : _libraryTabIndex == 0 
           ? FloatingActionButton.extended(
@@ -3374,6 +3439,24 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
         ),
           centerTitle: true,
           actions: [
+            if (_isRecording)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Text(
+                    "${(_recordingSeconds ~/ 60).toString().padLeft(2, '0')}:${(_recordingSeconds % 60).toString().padLeft(2, '0')}",
+                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            IconButton(
+              icon: Icon(
+                _isRecording ? Icons.stop_circle : Icons.fiber_manual_record, 
+                color: _isRecording ? Colors.redAccent : Colors.white70,
+                size: _isRecording ? 32 : 28,
+              ),
+              onPressed: _toggleRecording,
+            ),
             IconButton(
               icon: const Icon(Icons.more_vert),
               onPressed: _showMixerOptionsMenu,
