@@ -25,6 +25,7 @@ class CloudLibraryTab extends StatefulWidget {
 }
 
 class CloudLibraryTabState extends State<CloudLibraryTab> {
+  static bool _hasAutoSyncedThisSession = false;
   List<Map<String, String>> _folders = [];
   String _activeFolderId = '';
   List<dynamic> _cloudSongs = [];
@@ -62,6 +63,11 @@ class CloudLibraryTabState extends State<CloudLibraryTab> {
       }
     }
     setState(() {});
+    
+    if (_activeFolderId.isNotEmpty && !_hasAutoSyncedThisSession) {
+      _hasAutoSyncedThisSession = true;
+      fetchCloudSongs();
+    }
   }
 
   Future<void> _saveFolders() async {
