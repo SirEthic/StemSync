@@ -769,8 +769,11 @@ class _MixerScreenState extends State<MixerScreen> with SingleTickerProviderStat
           
           String rawName = _songMetadata != null ? (_songMetadata!['title'] ?? 'Live') : 'Live';
           final safeName = rawName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-          final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
-          final finalFile = File('${recDir.path}/${safeName}_$timestamp.wav');
+          
+          final now = DateTime.now();
+          final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+          final timeStr = "${now.hour.toString().padLeft(2, '0')}h${now.minute.toString().padLeft(2, '0')}m";
+          final finalFile = File('${recDir.path}/Live Mix - $safeName ($dateStr $timeStr).wav');
           
           await File(path).copy(finalFile.path);
           await File(path).delete();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 class RecordingsTab extends StatefulWidget {
   const RecordingsTab({super.key});
@@ -14,11 +15,23 @@ class RecordingsTabState extends State<RecordingsTab> {
   List<File> _recordings = [];
   bool _loading = true;
   String _debugPath = "";
+  
+  SoundHandle? _playingHandle;
+  AudioSource? _playingSource;
+  File? _playingFile;
 
   @override
   void initState() {
     super.initState();
     loadRecordings();
+  }
+
+
+  @override
+  void dispose() {
+    if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
+    if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
+    super.dispose();
   }
 
   Future<void> loadRecordings() async {
@@ -81,15 +94,41 @@ class RecordingsTabState extends State<RecordingsTab> {
                 final size = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
                 final dateStr = file.lastModifiedSync().toString().split('.')[0];
                 
+                final isPlaying = _playingFile == file;
                 return ListTile(
-                  leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.mic, color: Colors.white)),
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  leading: CircleAvatar(backgroundColor: isPlaying ? Colors.teal : Colors.redAccent, child: Icon(isPlaying ? Icons.multitrack_audio : Icons.mic, color: Colors.white)),
+                  title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: isPlaying ? Colors.tealAccent : Colors.white)),
                   subtitle: Text('$size MB  •  $dateStr', style: const TextStyle(color: Colors.grey)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.share, color: Colors.tealAccent),
+                        icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle_fill, color: Colors.tealAccent, size: 28),
+                        onPressed: () async {
+                          if (isPlaying) {
+                            if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
+                            if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
+                            setState(() {
+                              _playingHandle = null;
+                              _playingSource = null;
+                              _playingFile = null;
+                            });
+                          } else {
+                            if (_playingHandle != null) SoLoud.instance.stop(_playingHandle!);
+                            if (_playingSource != null) SoLoud.instance.disposeSource(_playingSource!);
+                            
+                            final source = await SoLoud.instance.loadFile(file.path);
+                            final handle = await SoLoud.instance.play(source);
+                            setState(() {
+                              _playingSource = source;
+                              _playingHandle = handle;
+                              _playingFile = file;
+                            });
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.share, color: Colors.white70),
                         onPressed: () {
                           Share.shareXFiles([XFile(file.path)], text: 'Check out this live gig recording!');
                         },
@@ -97,8 +136,26 @@ class RecordingsTabState extends State<RecordingsTab> {
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
                         onPressed: () async {
-                          await file.delete();
-                          loadRecordings();
+                          bool confirm = await showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              title: const Text("Delete Recording?", style: TextStyle(color: Colors.white)),
+                              content: Text("Are you sure you want to permanently delete:\n\n$name?", style: const TextStyle(color: Colors.white70)),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel", style: TextStyle(color: Colors.tealAccent))),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.redAccent))),
+                              ],
+                            ),
+                          ) ?? false;
+                          
+                          if (confirm) {
+                            if (isPlaying && _playingHandle != null) {
+                              SoLoud.instance.stop(_playingHandle!);
+                            }
+                            await file.delete();
+                            loadRecordings();
+                          }
                         },
                       ),
                     ],
